@@ -154,34 +154,40 @@ st.markdown(
     .stButton > button:hover { transform: translateY(-2px); background: linear-gradient(135deg, rgba(50,50,58,.92), rgba(18,18,22,.82)); box-shadow: inset 0 1px 0 rgba(255,255,255,.22), 0 14px 30px rgba(17,17,19,.22); }
     .stButton > button:hover::before { transform: translateX(120%); }
     .stButton > button:active { transform: translateY(0) scale(.985); }
-    [data-testid="stFileUploaderDropzone"] { border: 1px solid rgba(17,17,19,.12) !important; border-radius: 18px !important; background: rgba(255,255,255,.54) !important; box-shadow: inset 0 1px 0 rgba(255,255,255,.7), 0 12px 28px rgba(17,17,19,.06); backdrop-filter: blur(18px); }
+    [data-testid="stSidebar"] .section-label { color: rgba(255,255,255,.46); }
+    [data-testid="stSidebar"] label, [data-testid="stSidebar"] .stCaption { color: rgba(255,255,255,.68) !important; }
+    [data-testid="stSidebar"] [data-baseweb="radio"] label { color: rgba(255,255,255,.78) !important; }
+    [data-testid="stFileUploaderDropzone"] { border: 1px solid rgba(255,255,255,.16) !important; border-radius: 18px !important; background: linear-gradient(145deg, rgba(28,29,34,.98), rgba(9,10,13,.95)) !important; box-shadow: inset 0 1px 0 rgba(255,255,255,.10), 0 12px 28px rgba(17,17,19,.15); backdrop-filter: blur(18px); color: rgba(255,255,255,.72); }
     [data-testid="stFileUploaderDropzone"] section { background: transparent !important; }
-    [data-testid="stFileUploaderDropzone"] button { border: 1px solid rgba(17,17,19,.12) !important; border-radius: 10px !important; background: rgba(255,255,255,.65) !important; color: #111113 !important; }
+    [data-testid="stFileUploaderDropzone"] button { border: 1px solid rgba(255,255,255,.26) !important; border-radius: 10px !important; background: rgba(255,255,255,.10) !important; color: #fff !important; }
     .stTextInput input, .stTextArea textarea, .stSelectbox [data-baseweb="select"], .stSelectbox [data-baseweb="select"] > div {
         border-radius: 14px !important;
-        border: 1px solid rgba(17,17,19,.15) !important;
-        background: rgba(255,255,255,.68) !important;
-        color: #111113 !important;
-        box-shadow: inset 0 1px 0 rgba(255,255,255,.76), 0 8px 24px rgba(17,17,19,.045);
+        border: 1px solid rgba(255,255,255,.16) !important;
+        background: linear-gradient(145deg, rgba(22,23,28,.98), rgba(9,10,13,.95)) !important;
+        color: #fff !important;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,.09), 0 8px 24px rgba(17,17,19,.15);
         backdrop-filter: blur(18px);
     }
-    .stTextInput input:focus, .stTextArea textarea:focus, .stSelectbox [data-baseweb="select"] > div:focus-within { border-color: rgba(17,17,19,.38) !important; box-shadow: 0 0 0 4px rgba(17,17,19,.07), inset 0 1px 0 rgba(255,255,255,.8) !important; }
-    .stSelectbox [data-baseweb="select"] * { color: #111113 !important; }
-    [role="listbox"], [role="option"] { background: rgba(255,255,255,.96) !important; color: #111113 !important; }
-    [data-baseweb="radio"] [role="radio"] { border-color: #111113 !important; background: rgba(255,255,255,.72) !important; }
-    [data-baseweb="radio"] [role="radio"][aria-checked="true"] { background: #111113 !important; box-shadow: inset 0 0 0 3px rgba(255,255,255,.92) !important; }
-    [data-testid="stChatMessage"] { border: 1px solid rgba(17,17,19,.08); border-radius: 20px; margin: .65rem 0; padding: .85rem 1rem; background: rgba(255,255,255,.58); box-shadow: 0 12px 30px rgba(17,17,19,.045); backdrop-filter: blur(18px); animation: rise-in .4s cubic-bezier(.2,.75,.2,1) both; }
-    [data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarAssistant"]) { background: rgba(255,255,255,.78); }
-    [data-testid="stChatInput"] { border-radius: 18px !important; background: rgba(255,255,255,.72) !important; box-shadow: 0 16px 36px rgba(17,17,19,.10), inset 0 1px 0 rgba(255,255,255,.84); backdrop-filter: blur(20px); }
-    [data-testid="stChatInput"] textarea { background: transparent !important; }
-    .chat-meta { display: flex; gap: .55rem; align-items: center; margin-top: .7rem; color: #8b8b92; font-size: .74rem; }
-    .chat-pill { padding: .25rem .55rem; border: 1px solid rgba(17,17,19,.12); border-radius: 999px; background: rgba(255,255,255,.66); color: #55555d; }
-    .active-run { display: flex; flex-direction: column; gap: .25rem; margin: .4rem 0 1rem; padding: .85rem 1rem; border: 1px solid rgba(17,17,19,.10); border-radius: 16px; background: rgba(255,255,255,.55); color: #76767e; font-size: .74rem; }
-    .active-run strong { color: #202024; font-size: .92rem; font-weight: 650; }
-    .problem-row, .remediation-row { margin: .45rem 0; padding: .8rem .95rem; border: 1px solid rgba(17,17,19,.10); border-radius: 14px; background: rgba(255,255,255,.64); color: #323238; font-size: .88rem; line-height: 1.45; }
-    .problem-row { border-left: 4px solid #111113; }
-    .remediation-row { border-left: 4px solid #a4a4ab; }
-    .stExpander { border-color: rgba(17,17,19,.10) !important; border-radius: 16px !important; background: rgba(255,255,255,.34); }
+    .stTextInput input::placeholder, .stTextArea textarea::placeholder { color: rgba(255,255,255,.42) !important; }
+    .stTextInput input:focus, .stTextArea textarea:focus, .stSelectbox [data-baseweb="select"] > div:focus-within { border-color: rgba(255,255,255,.42) !important; box-shadow: 0 0 0 4px rgba(255,255,255,.08), inset 0 1px 0 rgba(255,255,255,.14) !important; }
+    .stSelectbox [data-baseweb="select"] * { color: #fff !important; }
+    [role="listbox"], [role="option"] { background: #111216 !important; color: #fff !important; }
+    [data-baseweb="radio"] [role="radio"] { border-color: rgba(255,255,255,.62) !important; background: rgba(255,255,255,.08) !important; }
+    [data-baseweb="radio"] [role="radio"][aria-checked="true"] { background: #fff !important; box-shadow: inset 0 0 0 3px #111216 !important; }
+    [data-testid="stChatMessage"] { border: 1px solid rgba(255,255,255,.14); border-radius: 20px; margin: .65rem 0; padding: .85rem 1rem; background: linear-gradient(145deg, rgba(18,19,23,.98), rgba(8,9,12,.94)); color: #fff; box-shadow: 0 14px 34px rgba(17,17,19,.17), inset 0 1px 0 rgba(255,255,255,.09); backdrop-filter: blur(18px); animation: rise-in .4s cubic-bezier(.2,.75,.2,1) both; }
+    [data-testid="stChatMessage"] p, [data-testid="stChatMessage"] span { color: rgba(255,255,255,.86) !important; }
+    [data-testid="stChatInput"] { border-radius: 18px !important; background: linear-gradient(145deg, rgba(18,19,23,.98), rgba(8,9,12,.94)) !important; box-shadow: 0 16px 36px rgba(17,17,19,.22), inset 0 1px 0 rgba(255,255,255,.12); backdrop-filter: blur(20px); }
+    [data-testid="stChatInput"] textarea { background: transparent !important; color: #fff !important; }
+    [data-testid="stChatInput"] textarea::placeholder { color: rgba(255,255,255,.44) !important; }
+    .chat-meta { display: flex; gap: .55rem; align-items: center; margin-top: .7rem; color: rgba(255,255,255,.46); font-size: .74rem; }
+    .chat-pill { padding: .25rem .55rem; border: 1px solid rgba(255,255,255,.20); border-radius: 999px; background: rgba(255,255,255,.08); color: rgba(255,255,255,.78); }
+    .active-run { display: flex; flex-direction: column; gap: .25rem; margin: .4rem 0 1rem; padding: .85rem 1rem; border: 1px solid rgba(255,255,255,.14); border-radius: 16px; background: linear-gradient(145deg, rgba(18,19,23,.98), rgba(8,9,12,.94)); color: rgba(255,255,255,.54); font-size: .74rem; box-shadow: inset 0 1px 0 rgba(255,255,255,.08); }
+    .active-run strong { color: #fff; font-size: .92rem; font-weight: 650; }
+    .problem-row, .remediation-row { margin: .45rem 0; padding: .8rem .95rem; border: 1px solid rgba(255,255,255,.14); border-radius: 14px; background: linear-gradient(145deg, rgba(18,19,23,.98), rgba(8,9,12,.94)); color: rgba(255,255,255,.82); font-size: .88rem; line-height: 1.45; box-shadow: inset 0 1px 0 rgba(255,255,255,.08); }
+    .problem-row { border-left: 4px solid #fff; }
+    .remediation-row { border-left: 4px solid #777b84; }
+    .stExpander { border-color: rgba(255,255,255,.14) !important; border-radius: 16px !important; background: linear-gradient(145deg, rgba(18,19,23,.96), rgba(8,9,12,.90)); color: #fff; }
+    .stExpander summary, .stExpander summary p { color: rgba(255,255,255,.82) !important; }
     .fade-in { animation: rise-in .5s cubic-bezier(.2,.75,.2,1) both; }
     @keyframes rise-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
     @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }

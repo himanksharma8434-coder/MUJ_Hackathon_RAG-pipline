@@ -57,14 +57,14 @@ def render_animated_hero(kicker: str, title: str, copy: str) -> None:
               * {{ box-sizing: border-box; }}
               html, body {{ margin: 0; width: 100%; height: 100%; overflow: hidden; background: transparent; }}
               body {{ padding-bottom: 12px; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }}
-              .hero {{ position: relative; isolation: isolate; min-height: 214px; overflow: hidden; padding: 32px 38px 28px; border: 1px solid rgba(17,17,19,.10); border-radius: 30px; background: linear-gradient(135deg, rgba(255,255,255,.92), rgba(255,255,255,.48)); box-shadow: 0 24px 70px rgba(17,17,19,.10), inset 0 1px 0 rgba(255,255,255,.8); backdrop-filter: blur(24px); }}
-              .hero::after {{ content: ""; position: absolute; z-index: -1; width: 300px; height: 300px; right: -90px; top: -130px; border-radius: 50%; background: radial-gradient(circle, rgba(255,255,255,.94) 0%, rgba(255,255,255,0) 70%); }}
-              .orb {{ position: absolute; z-index: -1; width: 120px; height: 120px; right: 18%; bottom: -74px; border-radius: 50%; background: rgba(17,17,19,.045); filter: blur(2px); }}
-              .eyebrow {{ color: #707078; font-size: 11px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }}
-              .hero-title {{ margin: 8px 0 10px; color: #111113; font-size: clamp(42px, 5vw, 68px); font-weight: 850; line-height: .92; letter-spacing: -.075em; }}
-              .hero-copy {{ max-width: 680px; margin: 0; color: #6b6b73; font-size: 15px; }}
-              .micro-status {{ margin-top: 18px; color: #6b6b73; font-size: 12px; }}
-              .micro-status strong {{ color: #111113; }}
+              .hero {{ position: relative; isolation: isolate; min-height: 214px; overflow: hidden; padding: 32px 38px 28px; border: 1px solid rgba(255,255,255,.16); border-radius: 30px; background: linear-gradient(145deg, rgba(18,19,23,.99), rgba(7,8,11,.95)); box-shadow: 0 24px 70px rgba(17,17,19,.24), inset 0 1px 0 rgba(255,255,255,.11); backdrop-filter: blur(24px); }}
+              .hero::after {{ content: ""; position: absolute; z-index: -1; width: 300px; height: 300px; right: -90px; top: -130px; border-radius: 50%; background: radial-gradient(circle, rgba(255,255,255,.18) 0%, rgba(255,255,255,0) 70%); }}
+              .orb {{ position: absolute; z-index: -1; width: 120px; height: 120px; right: 18%; bottom: -74px; border-radius: 50%; background: rgba(255,255,255,.08); filter: blur(2px); }}
+              .eyebrow {{ color: rgba(255,255,255,.54); font-size: 11px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }}
+              .hero-title {{ margin: 8px 0 10px; color: #fff; font-size: clamp(42px, 5vw, 68px); font-weight: 850; line-height: .92; letter-spacing: -.075em; }}
+              .hero-copy {{ max-width: 680px; margin: 0; color: rgba(255,255,255,.65); font-size: 15px; }}
+              .micro-status {{ margin-top: 18px; color: rgba(255,255,255,.50); font-size: 12px; }}
+              .micro-status strong {{ color: #fff; }}
               .reveal {{ opacity: 1; transform: translateY(0); }}
               @media (max-width: 720px) {{ .hero {{ padding: 28px 24px; }} .hero-title {{ font-size: 48px; }} }}
             </style>
