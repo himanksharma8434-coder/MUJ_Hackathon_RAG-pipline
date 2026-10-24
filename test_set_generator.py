@@ -1,185 +1,215 @@
+"""Deterministic and optional LLM-backed synthetic benchmark generation."""
+
+from dataclasses import dataclass
 import json
 import re
-from dataclasses import dataclass
-from typing import List, Optional
+from typing import List, Optional, Sequence
+
 from rag_pipeline import Chunk
 
 
-@dataclass
+@dataclass(frozen=True)
 class SyntheticTestCase:
     id: str
     question: str
     ground_truth: str
     source_chunk_id: str
-    question_type: str  # "Factual" | "Numeric/Policy" | "Reasoning"
+    question_type: str  # Factual | Numeric/Policy | Reasoning
 
 
 class SyntheticTestsetGenerator:
-    """
-    Deliverable 2: Automatically synthesizes evaluation questions + ground-truth answers
-    from uploaded document chunks.
-    """
+    """Create traceable Q&A cases directly from indexed chunks."""
+
+    NUMBER_PATTERN = re.compile(
+        r"(?:\$\s*)?\b\d[\d,]*(?:\.\d+)?\s*(?:%|hours?|days?|minutes?|seconds?|weeks?|months?|years?|ms|gb|usd)?\b",
+        flags=re.IGNORECASE,
+    )
+    POLICY_KEYWORDS = {
+        "must", "required", "mandatory", "shall", "sla", "policy", "prohibited",
+        "approval", "within", "limit", "capped", "penalty", "guarantee", "retained",
+    }
+    REASONING_KEYWORDS = {
+        "must", "required", "mandatory", "shall", "unless", "only", "when", "if",
+        "approval", "responsible", "protocol", "condition",
+    }
+
+    @classmethod
+    def _sentences(cls, text: str) -> List[str]:
+        return [
+            sentence.strip(" -*\t")
+            for sentence in re.split(r"(?<=[.!?])\s+|\n+", text)
+            if len(sentence.strip(" -*\t")) >= 35
+        ]
+
+    @classmethod
+    def _question_type(cls, sentence: str) -> str:
+        lowered = sentence.lower()
+        if cls.NUMBER_PATTERN.search(sentence) or any(
+            keyword in lowered for keyword in {"sla", "limit", "capped", "penalty", "uptime", "credit"}
+        ):
+            return "Numeric/Policy"
+        if any(keyword in lowered for keyword in cls.REASONING_KEYWORDS):
+            return "Reasoning"
+        return "Factual"
 
     @staticmethod
+    def _subject(sentence: str) -> str:
+        words = sentence.split()
+        subject = " ".join(words[: min(8, len(words))]).rstrip(" ,.:;\n")
+        return subject or "the documented topic"
+
+    @classmethod
+    def _question_for(cls, sentence: str, question_type: str) -> str:
+        subject = cls._subject(sentence)
+        if question_type == "Numeric/Policy":
+            return f"What metric, limit, duration, or policy requirement applies to '{subject}'?"
+        if question_type == "Reasoning":
+            return f"What condition or requirement is documented for '{subject}'?"
+        return f"According to the documentation, what is stated about '{subject}'?"
+
+    @classmethod
+    def _candidate_sentences(cls, chunks: Sequence[Chunk]) -> List[tuple[Chunk, str, int]]:
+        candidates: List[tuple[Chunk, str, int]] = []
+        for chunk in chunks:
+            for sentence in cls._sentences(chunk.text):
+                lowered = sentence.lower()
+                score = 0
+                if cls.NUMBER_PATTERN.search(sentence):
+                    score += 4
+                score += sum(keyword in lowered for keyword in cls.POLICY_KEYWORDS)
+                # Keep ordinary factual sentences eligible, but prioritize
+                # sentences that make useful compliance benchmarks.
+                score += min(2, len(sentence.split()) // 45)
+                candidates.append((chunk, sentence, score))
+        return candidates
+
+    @classmethod
+    def _generate_locally(cls, chunks: Sequence[Chunk], num_questions: int) -> List[SyntheticTestCase]:
+        if num_questions <= 0:
+            return []
+
+        candidates = cls._candidate_sentences(chunks)
+        candidates.sort(key=lambda item: item[2], reverse=True)
+        selected: List[tuple[Chunk, str, int]] = []
+        seen_sentences = set()
+
+        # First take at most one high-information sentence per chunk.  This
+        # gives uploads containing several documents a diverse benchmark.
+        selected_chunk_ids = set()
+        for candidate in candidates:
+            chunk, sentence, _ = candidate
+            key = re.sub(r"\W+", " ", sentence.lower()).strip()
+            if chunk.chunk_id in selected_chunk_ids or key in seen_sentences:
+                continue
+            selected.append(candidate)
+            selected_chunk_ids.add(chunk.chunk_id)
+            seen_sentences.add(key)
+            if len(selected) >= num_questions:
+                break
+
+        # If the requested size exceeds the number of chunks, fill from the
+        # remaining sentences without repeating the same source sentence.
+        if len(selected) < num_questions:
+            for candidate in candidates:
+                key = re.sub(r"\W+", " ", candidate[1].lower()).strip()
+                if key in seen_sentences:
+                    continue
+                selected.append(candidate)
+                seen_sentences.add(key)
+                if len(selected) >= num_questions:
+                    break
+
+        return [
+            SyntheticTestCase(
+                id=f"TEST-{index:02d}",
+                question=cls._question_for(sentence, cls._question_type(sentence)),
+                ground_truth=sentence,
+                source_chunk_id=chunk.chunk_id,
+                question_type=cls._question_type(sentence),
+            )
+            for index, (chunk, sentence, _) in enumerate(selected, start=1)
+        ]
+
+    @classmethod
     def generate_testset(
-        chunks: List[Chunk],
+        cls,
+        chunks: Sequence[Chunk],
         num_questions: int = 5,
         openai_api_key: Optional[str] = None,
         model: str = "gpt-4o-mini",
     ) -> List[SyntheticTestCase]:
-        if not chunks:
+        """Generate traceable cases locally, or use an optional LLM judge/generator."""
+
+        if not chunks or num_questions <= 0:
             return []
+        if not openai_api_key:
+            return cls._generate_locally(chunks, num_questions)
 
-        if openai_api_key:
-            return SyntheticTestsetGenerator._generate_with_llm(
-                chunks, num_questions, openai_api_key, model
-            )
-        return SyntheticTestsetGenerator._generate_locally(chunks, num_questions)
+        try:
+            return cls._generate_with_llm(chunks, num_questions, openai_api_key, model)
+        except Exception:
+            return cls._generate_locally(chunks, num_questions)
 
-    @staticmethod
-    def _generate_locally(chunks: List[Chunk], num_questions: int) -> List[SyntheticTestCase]:
-        """
-        Deterministic rule-based extractor that turns high-information sentences
-        (containing numbers, policies, definitions, or requirements) into Q&A pairs.
-        """
-        test_cases: List[SyntheticTestCase] = []
-        q_idx = 1
-
-        for chunk in chunks:
-            sentences = [
-                s.strip()
-                for s in re.split(r"(?<=[.!?])\s+", chunk.text)
-                if len(s.strip()) > 35
-            ]
-            for sent in sentences:
-                if len(test_cases) >= num_questions:
-                    break
-
-                # Pattern 1: Sentence with numbers / percentages / durations / dollar amounts
-                num_match = re.search(
-                    r"\b(\d+(?:\.\d+)?(?:\s*%|\s*hours|\s*days|\s*minutes|\s*seconds|\s*ms|\s*GB|\s*USD|\$)?)\b",
-                    sent,
-                    re.IGNORECASE,
-                )
-                # Extract leading subject phrase
-                words = sent.split()
-                subject = " ".join(words[: min(6, len(words))]).rstrip(",.:;")
-
-                if num_match:
-                    question = f"What specific metric, limit, or requirement applies to '{subject}'?"
-                    q_type = "Numeric/Policy"
-                elif any(k in sent.lower() for k in ["must", "required", "policy", "protocol", "responsible"]):
-                    question = f"What is the policy or requirement regarding '{subject}'?"
-                    q_type = "Reasoning"
-                else:
-                    question = f"According to the documentation, what is stated about '{subject}'?"
-                    q_type = "Factual"
-
-                test_cases.append(
-                    SyntheticTestCase(
-                        id=f"TEST-{q_idx:02d}",
-                        question=question,
-                        ground_truth=sent,
-                        source_chunk_id=chunk.chunk_id,
-                        question_type=q_type,
-                    )
-                )
-                q_idx += 1
-                break  # Pick one diverse question per chunk first
-
-        return test_cases
-
-    @staticmethod
+    @classmethod
     def _generate_with_llm(
-        chunks: List[Chunk], num_questions: int, openai_api_key: str, model: str
+        cls,
+        chunks: Sequence[Chunk],
+        num_questions: int,
+        openai_api_key: str,
+        model: str,
     ) -> List[SyntheticTestCase]:
         from openai import OpenAI
 
         client = OpenAI(api_key=openai_api_key)
-        selected_chunks = chunks[: min(len(chunks), num_questions)]
-        payload = [{"chunk_id": c.chunk_id, "text": c.text} for c in selected_chunks]
-
-        prompt = f"""Generate {num_questions} diverse evaluation test questions from the following document chunks.
-Each question must be answerable using its source chunk.
-Return ONLY valid JSON with key "test_cases" containing a list of objects:
-- "question": str
-- "ground_truth": str (concise, complete factual answer directly supported by the chunk)
-- "source_chunk_id": str
-- "question_type": "Factual" | "Numeric/Policy" | "Reasoning"
+        payload = [
+            {"chunk_id": chunk.chunk_id, "text": chunk.text}
+            for chunk in list(chunks)[: max(num_questions, 8)]
+        ]
+        prompt = f"""Generate {num_questions} diverse, answerable RAG evaluation cases from these chunks.
+Return only JSON with key test_cases. Each item must contain question, ground_truth,
+source_chunk_id, and question_type (Factual, Numeric/Policy, or Reasoning).
+Ground truth must be directly supported by the cited source chunk.
 
 Chunks:
 {json.dumps(payload)}"""
-
-        resp = client.chat.completions.create(
+        response = client.chat.completions.create(
             model=model,
-            temperature=0.3,
+            temperature=0.2,
             response_format={"type": "json_object"},
             messages=[{"role": "user", "content": prompt}],
         )
-        data = json.loads(resp.choices[0].message.content)
-        cases = []
-        for idx, item in enumerate(data.get("test_cases", [])[:num_questions], start=1):
+        data = json.loads(response.choices[0].message.content or "{}")
+        valid_ids = {chunk.chunk_id for chunk in chunks}
+        cases: List[SyntheticTestCase] = []
+        for index, item in enumerate(data.get("test_cases", []), start=1):
+            if len(cases) >= num_questions:
+                break
+            source_id = str(item.get("source_chunk_id", ""))
+            question = str(item.get("question", "")).strip()
+            ground_truth = str(item.get("ground_truth", "")).strip()
+            if not question or not ground_truth or source_id not in valid_ids:
+                continue
+            question_type = str(item.get("question_type", "Factual"))
+            if question_type not in {"Factual", "Numeric/Policy", "Reasoning"}:
+                question_type = "Factual"
             cases.append(
                 SyntheticTestCase(
-                    id=f"TEST-{idx:02d}",
-                    question=item["question"],
-                    ground_truth=item["ground_truth"],
-                    source_chunk_id=item["source_chunk_id"],
-                    question_type=item.get("question_type", "Factual"),
+                    id=f"TEST-{index:02d}",
+                    question=question,
+                    ground_truth=ground_truth,
+                    source_chunk_id=source_id,
+                    question_type=question_type,
                 )
             )
-        return cases
+        return cases or cls._generate_locally(chunks, num_questions)
 
 
 if __name__ == "__main__":
     from rag_pipeline import DecoupledRAGPipeline
 
-    print("=" * 60)
-    print("Testing Synthetic Test-Set Generation (Deliverable 2)")
-    print("=" * 60)
-
-    sample_docs = [
-        {
-            "name": "hr_policy.pdf",
-            "content": (
-                "Employees are entitled to 20 days of paid annual leave per calendar year. "
-                "Parental leave covers up to 16 weeks of fully compensated leave for primary caregivers."
-            ),
-        },
-        {
-            "name": "finance_policy.pdf",
-            "content": (
-                "Any expense reports exceeding $500 USD must be submitted within 14 days and requires approval from the Zurich Compliance Board. "
-                "Mileage reimbursement is calculated at 0.65 USD per mile traveled for official business."
-            ),
-        },
-        {
-            "name": "security_protocol.pdf",
-            "content": (
-                "All remote employees must connect to the corporate VPN when accessing internal databases. "
-                "Multi-factor authentication (MFA) is strictly required for all administrative logins."
-            ),
-        },
-        {
-            "name": "infrastructure_sla.pdf",
-            "content": (
-                "Data backups are conducted every 24 hours to ensure high availability and disaster recovery. "
-                "System uptime SLA is guaranteed at 99.95% availability excluding scheduled maintenance."
-            ),
-        },
-    ]
-
     pipeline = DecoupledRAGPipeline(chunk_size=100, chunk_overlap=20)
-    num_chunks = pipeline.ingest_documents(sample_docs)
-    print(f"Successfully ingested sample documents into {num_chunks} chunks.")
-
-    print("\nGenerating synthetic Q&A test cases (local rule-based mode)...")
-    test_cases = SyntheticTestsetGenerator.generate_testset(pipeline.chunks, num_questions=4)
-
-    print(f"Generated {len(test_cases)} test cases:\n")
-    for tc in test_cases:
-        print(f"[{tc.id}] Type: {tc.question_type}")
-        print(f"  Source Chunk : {tc.source_chunk_id}")
-        print(f"  Question     : {tc.question}")
-        print(f"  Ground Truth : {tc.ground_truth}")
-        print("-" * 60)
+    pipeline.ingest_documents(
+        [{"name": "demo.txt", "content": "The uptime SLA is 99.95% and incidents must be acknowledged within 15 minutes."}]
+    )
+    for test_case in SyntheticTestsetGenerator.generate_testset(pipeline.chunks):
+        print(test_case)
