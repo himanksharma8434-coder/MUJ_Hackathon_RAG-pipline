@@ -1,102 +1,142 @@
-import html
+"""Campus RAG Lab Streamlit application.
+
+The app has three intentionally different views:
+
+* Overview: the five-second scorecard for a demo audience.
+* User ↔ AI: a clean, student-facing chat experience.
+* AI Engineer: the detailed root-cause and remediation view.
+"""
+
+from __future__ import annotations
+
 import io
-import pandas as pd
+from typing import Optional
+
 import streamlit as st
 from pypdf import PdfReader
-from streamlit.components.v1 import html as components_html
 
+from evaluator import EvaluationResult, RAGEvaluator
 from rag_pipeline import DecoupledRAGPipeline
-from evaluator import RAGEvaluator, EvaluationResult
-try:
-    from test_set_generator import SyntheticTestsetGenerator
-except ImportError:
-    from testset_generator import SyntheticTestsetGenerator
+from test_set_generator import SyntheticTestsetGenerator
+from ui_views import (
+    render_batch_audit,
+    render_chat,
+    render_engineer,
+    render_overview,
+)
+
 
 st.set_page_config(
     page_title="Campus RAG Lab",
-    page_icon="🔍",
+    page_icon="✦",
     layout="wide",
+    initial_sidebar_state="expanded",
 )
 
-# Minimal black-and-white glassmorphism theme.
+
 st.markdown(
     """
     <style>
     :root { color-scheme: light; }
     .stApp {
         background:
-            radial-gradient(circle at 10% 0%, rgba(255,255,255,.98), transparent 35%),
-            linear-gradient(145deg, #f5f5f7 0%, #e9e9ed 100%);
+            radial-gradient(circle at 8% 0%, rgba(255,255,255,.98), transparent 34%),
+            linear-gradient(145deg, #f8f8f6 0%, #e8e8e5 100%);
         color: #111113;
     }
     [data-testid="stAppViewContainer"] { background: transparent; }
     [data-testid="stHeader"] { background: rgba(255,255,255,0); }
     [data-testid="stToolbar"] { visibility: hidden; }
-    .block-container { max-width: 1440px; padding: 2.4rem 3rem 4rem; }
+    .block-container { max-width: 1440px; padding: 2.2rem 3rem 4rem; }
     [data-testid="stSidebar"] {
-        background: rgba(247,247,249,.82);
-        border-right: 1px solid rgba(17,17,19,.08);
+        background: rgba(9,10,13,.97);
+        border-right: 1px solid rgba(255,255,255,.12);
         backdrop-filter: blur(22px);
     }
-    [data-testid="stSidebarContent"] { padding: 1.4rem 1rem 2rem; }
+    [data-testid="stSidebarContent"] { padding: 1.2rem 1rem 2rem; }
     [data-testid="stVerticalBlockBorderWrapper"] {
-        border: 1px solid rgba(17,17,19,.10);
+        border: 1px solid rgba(255,255,255,.14);
         border-radius: 24px;
-        background: rgba(255,255,255,.58);
-        box-shadow: 0 18px 50px rgba(17,17,19,.07);
+        background: linear-gradient(145deg, rgba(16,17,21,.98), rgba(7,8,11,.94));
+        box-shadow: 0 22px 60px rgba(17,17,19,.19), inset 0 1px 0 rgba(255,255,255,.09);
         backdrop-filter: blur(20px);
+        color: #fff;
     }
-    h1, h2, h3 { letter-spacing: -0.045em; color: #111113; }
+    [data-testid="stVerticalBlockBorderWrapper"] p,
+    [data-testid="stVerticalBlockBorderWrapper"] label,
+    [data-testid="stVerticalBlockBorderWrapper"] .stCaption { color: rgba(255,255,255,.68) !important; }
+    [data-testid="stVerticalBlockBorderWrapper"] .section-label { color: rgba(255,255,255,.55) !important; }
+    h1, h2, h3 { letter-spacing: -.045em; color: #111113; }
     h1 { font-size: clamp(2.2rem, 5vw, 4.4rem) !important; line-height: .98 !important; }
     h2 { font-size: 1.45rem !important; }
     h3 { font-size: 1.05rem !important; }
     p, label, .stCaption { color: #6b6b73; }
-    .hero {
-        padding: 2.2rem 2.4rem 2rem;
-        border: 1px solid rgba(17,17,19,.10);
-        border-radius: 30px;
-        background: linear-gradient(135deg, rgba(255,255,255,.88), rgba(255,255,255,.42));
-        box-shadow: 0 24px 70px rgba(17,17,19,.10);
-        backdrop-filter: blur(24px);
-        margin-bottom: 1.2rem;
+    .page-header {
+        padding: 1.2rem .15rem 1.1rem;
+        animation: rise-in .55s cubic-bezier(.2,.75,.2,1) both;
     }
-    .eyebrow { color: #707078; font-size: .72rem; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }
-    .hero-title { margin: .45rem 0 .7rem; font-size: clamp(2.2rem, 5vw, 4.2rem); font-weight: 800; line-height: .98; letter-spacing: -.07em; }
-    .hero-copy { max-width: 680px; margin: 0; font-size: 1rem; color: #6b6b73; }
-    .micro-status { margin-top: 1.2rem; color: #6b6b73; font-size: .82rem; }
-    .micro-status strong { color: #111113; }
+    .eyebrow, .section-label, .verdict-kicker, .answer-label {
+        color: #74747c;
+        font-size: .7rem;
+        font-weight: 800;
+        letter-spacing: .14em;
+        text-transform: uppercase;
+    }
+    .page-title {
+        margin: .35rem 0 .45rem;
+        color: #111113;
+        font-size: clamp(2.2rem, 5vw, 4.2rem);
+        font-weight: 850;
+        line-height: .96;
+        letter-spacing: -.07em;
+    }
+    .page-copy { max-width: 720px; margin: 0; font-size: 1rem; color: #6b6b73; }
+    .section-label { margin: 1.45rem 0 .6rem; }
     .metric-card {
         min-height: 118px;
         padding: 1.1rem 1.15rem;
-        border: 1px solid rgba(17,17,19,.10);
+        border: 1px solid rgba(255,255,255,.14);
         border-radius: 20px;
-        background: rgba(255,255,255,.64);
-        box-shadow: 0 12px 35px rgba(17,17,19,.06);
+        background: linear-gradient(145deg, rgba(17,18,22,.98), rgba(8,9,12,.94));
+        box-shadow: 0 16px 42px rgba(17,17,19,.18), inset 0 1px 0 rgba(255,255,255,.10);
         backdrop-filter: blur(18px);
     }
-    .metric-top { display: flex; align-items: center; justify-content: space-between; gap: .5rem; color: #6b6b73; font-size: .72rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
-    .metric-dot { width: 8px; height: 8px; border-radius: 50%; background: #111113; display: inline-block; }
-    .metric-dot.fail { background: #b5b5bd; box-shadow: 0 0 0 4px rgba(17,17,19,.08); }
-    .metric-value { margin: .3rem 0 .05rem; color: #111113; font-size: 2rem; font-weight: 800; letter-spacing: -.06em; }
-    .metric-sub { color: #87878e; font-size: .74rem; }
-    .verdict-banner { padding: 1.1rem 1.25rem; border: 1px solid #111113; border-radius: 18px; background: rgba(255,255,255,.74); box-shadow: 0 12px 30px rgba(17,17,19,.06); }
-    .verdict-banner.warning { border-color: #8b8b92; }
-    .verdict-banner.error { border-color: #111113; background: rgba(241,241,243,.88); }
-    .verdict-kicker { color: #74747c; font-size: .7rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
-    .verdict-title { margin: .25rem 0 .35rem; color: #111113; font-size: 1.25rem; font-weight: 800; letter-spacing: -.04em; }
-    .verdict-copy { margin: 0; color: #6b6b73; font-size: .88rem; line-height: 1.45; }
-    .answer-card { padding: 1.25rem 1.4rem; border: 1px solid rgba(17,17,19,.10); border-radius: 22px; background: rgba(255,255,255,.74); box-shadow: 0 15px 40px rgba(17,17,19,.06); }
-    .answer-label { color: #74747c; font-size: .72rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
-    .answer-text { margin-top: .7rem; color: #202024; font-size: 1.08rem; line-height: 1.7; }
-    .chunk-box { border-radius: 14px; padding: 12px 14px; margin-bottom: 9px; font-size: .86rem; line-height: 1.5; background: rgba(255,255,255,.76); border: 1px solid rgba(17,17,19,.10); color: #25252a; }
-    .chunk-green { border-left: 4px solid #111113; }
-    .chunk-red { border-left: 4px solid #a4a4ab; background: rgba(238,238,241,.78); }
-    .claim-green { background: #f0f0f2; color: #111113; padding: 3px 7px; border-radius: 6px; border-bottom: 2px solid #111113; }
-    .claim-red { background: #dedee2; color: #111113; padding: 3px 7px; border-radius: 6px; border-bottom: 2px solid #77777f; font-weight: 700; }
-    .claim-neutral { background: #f5f5f7; color: #55555d; padding: 3px 7px; border-radius: 6px; border-bottom: 2px solid #aaaab1; }
-    .section-label { margin: 1.5rem 0 .6rem; color: #74747c; font-size: .72rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
-    .sidebar-brand { margin-bottom: 1.3rem; color: #111113; font-size: 1.15rem; font-weight: 800; letter-spacing: -.04em; }
-    .sidebar-note { margin: .2rem 0 1.2rem; color: #7a7a82; font-size: .78rem; line-height: 1.45; }
+    .metric-top { display: flex; align-items: center; justify-content: space-between; color: rgba(255,255,255,.62); font-size: .72rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+    .metric-dot { width: 8px; height: 8px; border-radius: 50%; background: #fff; display: inline-block; box-shadow: 0 0 14px rgba(255,255,255,.55); }
+    .metric-dot.fail { background: #787b84; box-shadow: 0 0 0 4px rgba(255,255,255,.08); }
+    .metric-value { margin: .3rem 0 .05rem; color: #fff; font-size: 2rem; font-weight: 800; letter-spacing: -.06em; }
+    .metric-sub { color: rgba(255,255,255,.48); font-size: .74rem; }
+    .verdict-banner {
+        margin-top: .75rem;
+        padding: 1.1rem 1.25rem;
+        border: 1px solid rgba(255,255,255,.25);
+        border-radius: 18px;
+        background: linear-gradient(145deg, rgba(17,18,22,.98), rgba(8,9,12,.94));
+        box-shadow: 0 16px 42px rgba(17,17,19,.18), inset 0 1px 0 rgba(255,255,255,.10);
+        animation: rise-in .5s .08s cubic-bezier(.2,.75,.2,1) both;
+    }
+    .verdict-banner.warning { border-color: rgba(255,255,255,.42); }
+    .verdict-banner.error { background: linear-gradient(145deg, rgba(28,29,34,.98), rgba(10,11,14,.96)); }
+    .verdict-title { margin: .25rem 0 .35rem; color: #fff; font-size: 1.25rem; font-weight: 800; letter-spacing: -.04em; }
+    .verdict-copy { margin: 0; color: rgba(255,255,255,.62); font-size: .88rem; line-height: 1.45; }
+    .answer-card {
+        margin-top: .8rem;
+        padding: 1.25rem 1.4rem;
+        border: 1px solid rgba(255,255,255,.14);
+        border-radius: 22px;
+        background: linear-gradient(145deg, rgba(17,18,22,.98), rgba(8,9,12,.94));
+        box-shadow: 0 16px 42px rgba(17,17,19,.18), inset 0 1px 0 rgba(255,255,255,.10);
+        animation: rise-in .55s .14s cubic-bezier(.2,.75,.2,1) both;
+    }
+    .answer-text { margin-top: .7rem; color: #fff; font-size: 1.08rem; line-height: 1.7; }
+    .claim-green { background: rgba(255,255,255,.10); color: #fff; padding: 3px 7px; border-radius: 6px; border: 1px solid rgba(255,255,255,.26); }
+    .claim-red { background: rgba(255,255,255,.16); color: #fff; padding: 3px 7px; border-radius: 6px; border: 1px solid rgba(255,255,255,.42); font-weight: 700; }
+    .claim-neutral { background: rgba(255,255,255,.06); color: rgba(255,255,255,.72); padding: 3px 7px; border-radius: 6px; border: 1px solid rgba(255,255,255,.18); }
+    .chunk-box { border-radius: 14px; padding: 12px 14px; margin-bottom: 9px; font-size: .86rem; line-height: 1.5; background: linear-gradient(145deg, rgba(18,19,23,.98), rgba(8,9,12,.94)); border: 1px solid rgba(255,255,255,.14); color: rgba(255,255,255,.82); box-shadow: inset 0 1px 0 rgba(255,255,255,.08); }
+    .chunk-green { border-left: 4px solid #fff; }
+    .chunk-red { border-left: 4px solid #71747d; background: linear-gradient(145deg, rgba(34,35,41,.98), rgba(13,14,18,.96)); }
+    .sidebar-brand { margin-bottom: .25rem; color: #fff; font-size: 1.15rem; font-weight: 800; letter-spacing: -.04em; }
+    .sidebar-note { margin: .2rem 0 1.2rem; color: rgba(255,255,255,.54); font-size: .78rem; line-height: 1.45; }
     .stButton > button {
         position: relative;
         overflow: hidden;
@@ -110,19 +150,11 @@ st.markdown(
         backdrop-filter: blur(18px);
         transition: transform .25s ease, box-shadow .25s ease, background .25s ease;
     }
-    .stButton > button::before {
-        content: "";
-        position: absolute;
-        inset: 0;
-        background: linear-gradient(115deg, transparent 20%, rgba(255,255,255,.22) 48%, transparent 75%);
-        transform: translateX(-120%);
-        transition: transform .55s ease;
-        pointer-events: none;
-    }
+    .stButton > button::before { content: ""; position: absolute; inset: 0; background: linear-gradient(115deg, transparent 20%, rgba(255,255,255,.22) 48%, transparent 75%); transform: translateX(-120%); transition: transform .55s ease; pointer-events: none; }
     .stButton > button:hover { transform: translateY(-2px); background: linear-gradient(135deg, rgba(50,50,58,.92), rgba(18,18,22,.82)); box-shadow: inset 0 1px 0 rgba(255,255,255,.22), 0 14px 30px rgba(17,17,19,.22); }
     .stButton > button:hover::before { transform: translateX(120%); }
     .stButton > button:active { transform: translateY(0) scale(.985); }
-    [data-testid="stFileUploaderDropzone"], section[data-testid="stFileUploaderDropzone"] { border: 1px solid rgba(17,17,19,.12) !important; border-radius: 18px !important; background: rgba(255,255,255,.54) !important; box-shadow: inset 0 1px 0 rgba(255,255,255,.7), 0 12px 28px rgba(17,17,19,.06); backdrop-filter: blur(18px); }
+    [data-testid="stFileUploaderDropzone"] { border: 1px solid rgba(17,17,19,.12) !important; border-radius: 18px !important; background: rgba(255,255,255,.54) !important; box-shadow: inset 0 1px 0 rgba(255,255,255,.7), 0 12px 28px rgba(17,17,19,.06); backdrop-filter: blur(18px); }
     [data-testid="stFileUploaderDropzone"] section { background: transparent !important; }
     [data-testid="stFileUploaderDropzone"] button { border: 1px solid rgba(17,17,19,.12) !important; border-radius: 10px !important; background: rgba(255,255,255,.65) !important; color: #111113 !important; }
     .stTextInput input, .stTextArea textarea, .stSelectbox [data-baseweb="select"], .stSelectbox [data-baseweb="select"] > div {
@@ -132,21 +164,33 @@ st.markdown(
         color: #111113 !important;
         box-shadow: inset 0 1px 0 rgba(255,255,255,.76), 0 8px 24px rgba(17,17,19,.045);
         backdrop-filter: blur(18px);
-        transition: border-color .25s ease, box-shadow .25s ease, transform .25s ease;
     }
     .stTextInput input:focus, .stTextArea textarea:focus, .stSelectbox [data-baseweb="select"] > div:focus-within { border-color: rgba(17,17,19,.38) !important; box-shadow: 0 0 0 4px rgba(17,17,19,.07), inset 0 1px 0 rgba(255,255,255,.8) !important; }
     .stSelectbox [data-baseweb="select"] * { color: #111113 !important; }
     [role="listbox"], [role="option"] { background: rgba(255,255,255,.96) !important; color: #111113 !important; }
-    .stRadio input { accent-color: #111113; }
     [data-baseweb="radio"] [role="radio"] { border-color: #111113 !important; background: rgba(255,255,255,.72) !important; }
     [data-baseweb="radio"] [role="radio"][aria-checked="true"] { background: #111113 !important; box-shadow: inset 0 0 0 3px rgba(255,255,255,.92) !important; }
+    [data-testid="stChatMessage"] { border: 1px solid rgba(17,17,19,.08); border-radius: 20px; margin: .65rem 0; padding: .85rem 1rem; background: rgba(255,255,255,.58); box-shadow: 0 12px 30px rgba(17,17,19,.045); backdrop-filter: blur(18px); animation: rise-in .4s cubic-bezier(.2,.75,.2,1) both; }
+    [data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarAssistant"]) { background: rgba(255,255,255,.78); }
+    [data-testid="stChatInput"] { border-radius: 18px !important; background: rgba(255,255,255,.72) !important; box-shadow: 0 16px 36px rgba(17,17,19,.10), inset 0 1px 0 rgba(255,255,255,.84); backdrop-filter: blur(20px); }
+    [data-testid="stChatInput"] textarea { background: transparent !important; }
+    .chat-meta { display: flex; gap: .55rem; align-items: center; margin-top: .7rem; color: #8b8b92; font-size: .74rem; }
+    .chat-pill { padding: .25rem .55rem; border: 1px solid rgba(17,17,19,.12); border-radius: 999px; background: rgba(255,255,255,.66); color: #55555d; }
+    .active-run { display: flex; flex-direction: column; gap: .25rem; margin: .4rem 0 1rem; padding: .85rem 1rem; border: 1px solid rgba(17,17,19,.10); border-radius: 16px; background: rgba(255,255,255,.55); color: #76767e; font-size: .74rem; }
+    .active-run strong { color: #202024; font-size: .92rem; font-weight: 650; }
+    .problem-row, .remediation-row { margin: .45rem 0; padding: .8rem .95rem; border: 1px solid rgba(17,17,19,.10); border-radius: 14px; background: rgba(255,255,255,.64); color: #323238; font-size: .88rem; line-height: 1.45; }
+    .problem-row { border-left: 4px solid #111113; }
+    .remediation-row { border-left: 4px solid #a4a4ab; }
     .stExpander { border-color: rgba(17,17,19,.10) !important; border-radius: 16px !important; background: rgba(255,255,255,.34); }
+    .fade-in { animation: rise-in .5s cubic-bezier(.2,.75,.2,1) both; }
+    @keyframes rise-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
     </style>
     """,
     unsafe_allow_html=True,
 )
 
-# Default sample corpus so the app works immediately on launch
+
 DEFAULT_DOCS = [
     {
         "name": "campus_library_policy.txt",
@@ -185,331 +229,185 @@ DEFAULT_DOCS = [
 ]
 
 
-def render_scorecard(title: str, score: float | None, subtitle: str, threshold: float = 0.65):
-    if score is None:
-        val_str = "N/A"
-        status_str = "No Ground Truth"
-        dot_class = "fail"
-    else:
-        is_good = score >= threshold
-        val_str = f"{score:.0%}"
-        status_str = "On target" if is_good else "Below target"
-        dot_class = "" if is_good else "fail"
-
-    st.markdown(
-        f"""
-        <div class="metric-card">
-            <div class="metric-top"><span>{title}</span><span class="metric-dot {dot_class}"></span></div>
-            <div class="metric-value">{val_str}</div>
-            <div class="metric-sub">{status_str} · {subtitle}</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+SCENARIOS = [
+    "Normal · healthy",
+    "Retriever · wrong chunks",
+    "Generator · hallucination",
+    "Generator · omission",
+    "Compound · both fail",
+]
 
 
 def parse_uploaded_files(uploaded_files) -> list[dict]:
-    docs = []
-    for f in uploaded_files:
+    documents = []
+    for uploaded_file in uploaded_files or []:
         try:
-            if f.name.lower().endswith(".pdf"):
-                reader = PdfReader(io.BytesIO(f.read()))
+            if uploaded_file.name.lower().endswith(".pdf"):
+                reader = PdfReader(io.BytesIO(uploaded_file.read()))
                 text = "\n".join(page.extract_text() or "" for page in reader.pages)
             else:
-                text = f.read().decode("utf-8", errors="ignore")
+                text = uploaded_file.read().decode("utf-8", errors="ignore")
         except Exception as exc:
-            st.warning(f"Could not read {f.name}: {exc}")
+            st.warning(f"Could not read {uploaded_file.name}: {exc}")
             continue
         if text.strip():
-            docs.append({"name": f.name, "content": text})
-    return docs
+            documents.append({"name": uploaded_file.name, "content": text})
+    return documents
 
 
-# Initialize session state
-if "pipeline" not in st.session_state:
-    pipe = DecoupledRAGPipeline(chunk_size=65, chunk_overlap=12)
-    pipe.ingest_documents(DEFAULT_DOCS)
-    st.session_state.pipeline = pipe
-    st.session_state.synthetic_tests = SyntheticTestsetGenerator.generate_testset(
-        pipe.chunks, num_questions=5
-    )
-
-# ─── SIDEBAR: Configuration, Document Upload & Fault Injection ───
-with st.sidebar:
-    st.markdown('<div class="sidebar-brand">Campus RAG Lab</div>', unsafe_allow_html=True)
-    st.markdown(
-        '<div class="sidebar-note">A simple way to show whether a wrong answer came from search or generation.</div>',
-        unsafe_allow_html=True,
-    )
-    uploaded_files = st.file_uploader(
-        "Add documents",
-        type=["pdf", "txt", "md"],
-        accept_multiple_files=True,
-    )
-
-    if st.button("Index documents", use_container_width=True):
-        docs_to_use = parse_uploaded_files(uploaded_files) if uploaded_files else DEFAULT_DOCS
-        pipe = DecoupledRAGPipeline(
-            chunk_size=int(chunk_size), chunk_overlap=int(chunk_overlap)
-        )
-        pipe.ingest_documents(docs_to_use)
-        st.session_state.pipeline = pipe
+def ensure_session_state() -> None:
+    if "pipeline" not in st.session_state:
+        pipeline = DecoupledRAGPipeline(chunk_size=65, chunk_overlap=12)
+        pipeline.ingest_documents(DEFAULT_DOCS)
+        st.session_state.pipeline = pipeline
         st.session_state.synthetic_tests = SyntheticTestsetGenerator.generate_testset(
-            pipe.chunks, num_questions=5
+            pipeline.chunks, num_questions=5
         )
-        st.success(f"Ready · {len(pipe.chunks)} chunks")
+    st.session_state.setdefault("chat_history", [])
+    st.session_state.setdefault("latest_query", "How many books can a student borrow, and how long is the standard borrowing period?")
+    st.session_state.setdefault("latest_ground_truth", "Students may borrow up to 5 books at one time, and the standard borrowing period is 14 days.")
 
-    st.markdown('<div class="section-label">Demo mode</div>', unsafe_allow_html=True)
-    scenario = st.radio(
-        "Choose one scenario",
-        options=[
-            "Normal · healthy",
-            "Retriever · wrong chunks",
-            "Generator · hallucination",
-            "Generator · omission",
-            "Compound · both fail",
-        ],
-        index=0,
-    )
 
-    with st.expander("Advanced settings"):
-        col_c1, col_c2 = st.columns(2)
-        chunk_size = col_c1.slider("Chunk size", 30, 300, 65, step=5)
-        top_k = col_c2.slider("Top-K", 1, 6, 2)
-        overlap_max = max(0, min(100, int(chunk_size) - 1))
-        chunk_overlap = st.slider(
-            "Chunk overlap", 0, overlap_max, min(12, overlap_max), step=1
+def render_sidebar() -> tuple[str, str, int, float, Optional[str], int, bool, str]:
+    with st.sidebar:
+        st.markdown('<div class="sidebar-brand">Campus RAG Lab</div>', unsafe_allow_html=True)
+        st.markdown(
+            '<div class="sidebar-note">A simple way to show whether a wrong answer came from search or generation.</div>',
+            unsafe_allow_html=True,
         )
-        pass_threshold = st.slider("Pass threshold", 0.40, 0.90, 0.65, 0.05)
-        openai_api_key = st.text_input(
-            "LLM judge key (optional)",
-            type="password",
-            help="Leave blank for the local zero-key evaluator.",
+        page = st.radio(
+            "Workspace",
+            ["Overview", "User ↔ AI", "AI engineer"],
+            label_visibility="collapsed",
         )
-        st.caption("Local mode: BM25 + TF-IDF + numeric consistency checks.")
+        st.markdown('<div class="section-label">Documents</div>', unsafe_allow_html=True)
+        uploaded_files = st.file_uploader(
+            "Add documents",
+            type=["pdf", "txt", "md"],
+            accept_multiple_files=True,
+        )
+        if st.button("Index documents", use_container_width=True):
+            documents = parse_uploaded_files(uploaded_files) if uploaded_files else DEFAULT_DOCS
+            pipeline = DecoupledRAGPipeline(chunk_size=65, chunk_overlap=12)
+            pipeline.ingest_documents(documents)
+            st.session_state.pipeline = pipeline
+            st.session_state.synthetic_tests = SyntheticTestsetGenerator.generate_testset(
+                pipeline.chunks, num_questions=5
+            )
+            st.session_state.chat_history = []
+            st.success(f"Ready · {len(pipeline.chunks)} chunks")
 
-# Map scenario selection to fault flags
-sim_bad_ret = scenario in ("Retriever · wrong chunks", "Compound · both fail")
-if scenario in ("Generator · hallucination", "Compound · both fail"):
-    sim_gen_mode = "hallucinate"
-elif scenario == "Generator · omission":
-    sim_gen_mode = "omit"
-else:
-    sim_gen_mode = "normal"
+        st.markdown('<div class="section-label">Demo mode</div>', unsafe_allow_html=True)
+        scenario = st.radio("Choose one scenario", SCENARIOS, index=0)
 
-# ─── MAIN SINGLE-SCREEN DASHBOARD ───
-components_html(
-    """
-    <!doctype html>
-    <html>
-      <head>
-        <meta charset="utf-8" />
-        <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
-        <style>
-          :root { color-scheme: light; }
-          * { box-sizing: border-box; }
-          html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: transparent; }
-          body { padding: 0 0 12px; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-          .hero { position: relative; isolation: isolate; min-height: 226px; overflow: hidden; padding: 34px 40px 30px; border: 1px solid rgba(17,17,19,.10); border-radius: 30px; background: linear-gradient(135deg, rgba(255,255,255,.9), rgba(255,255,255,.48)); box-shadow: 0 24px 70px rgba(17,17,19,.10), inset 0 1px 0 rgba(255,255,255,.8); backdrop-filter: blur(24px); }
-          .hero::after { content: ""; position: absolute; z-index: -1; width: 280px; height: 280px; right: -92px; top: -106px; border-radius: 50%; background: radial-gradient(circle, rgba(255,255,255,.94) 0%, rgba(255,255,255,0) 70%); filter: blur(4px); }
-          .orb { position: absolute; z-index: -1; width: 120px; height: 120px; right: 18%; bottom: -74px; border-radius: 50%; background: rgba(17,17,19,.045); filter: blur(2px); }
-          .eyebrow { color: #707078; font-size: 11px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }
-          .hero-title { margin: 8px 0 10px; color: #111113; font-size: clamp(42px, 5vw, 68px); font-weight: 850; line-height: .92; letter-spacing: -.075em; }
-          .hero-copy { max-width: 680px; margin: 0; color: #6b6b73; font-size: 15px; }
-          .micro-status { margin-top: 18px; color: #6b6b73; font-size: 12px; }
-          .micro-status strong { color: #111113; }
-          .reveal { opacity: 1; transform: translateY(0); }
-          @media (max-width: 720px) { .hero { padding: 28px 24px; } .hero-title { font-size: 48px; } }
-        </style>
-      </head>
-      <body>
-        <div class="hero">
-          <div class="orb"></div>
-          <div class="eyebrow reveal">RAG / ROOT-CAUSE / LIVE DEMO</div>
-          <div class="hero-title reveal">Can we trust<br/>this answer?</div>
-          <p class="hero-copy reveal">One clean view separates a search problem from a generation problem.</p>
-          <div class="micro-status reveal"><strong>Ask</strong> → read the four scores → open evidence only when needed.</div>
-        </div>
-        <script>
-          const start = () => {
-            if (!window.gsap) return;
-            gsap.set(".reveal", { opacity: 0, y: 16 });
-            const timeline = gsap.timeline({ defaults: { ease: "power3.out" } });
-            timeline.to(".hero", { duration: .7, opacity: 1, y: 0, startAt: { opacity: 0, y: 10 } })
-              .to(".eyebrow", { duration: .42, opacity: 1, y: 0 }, "-=.4")
-              .to(".hero-title", { duration: .62, opacity: 1, y: 0 }, "-=.24")
-              .to(".hero-copy", { duration: .42, opacity: 1, y: 0 }, "-=.32")
-              .to(".micro-status", { duration: .42, opacity: 1, y: 0 }, "-=.25");
-            gsap.to(".orb", { duration: 5, x: 28, y: -10, repeat: -1, yoyo: true, ease: "sine.inOut" });
-          };
-          window.addEventListener("load", start);
-        </script>
-      </body>
-    </html>
-    """,
-    height=250,
-    scrolling=False,
-)
+        with st.expander("Advanced settings"):
+            col_one, col_two = st.columns(2)
+            chunk_size = col_one.slider("Chunk size", 30, 300, 65, step=5)
+            top_k = col_two.slider("Top-K", 1, 6, 2)
+            overlap_max = max(0, min(100, int(chunk_size) - 1))
+            chunk_overlap = st.slider("Chunk overlap", 0, overlap_max, min(12, overlap_max), step=1)
+            pass_threshold = st.slider("Pass threshold", 0.40, 0.90, 0.65, 0.05)
+            openai_api_key = st.text_input(
+                "LLM judge key (optional)",
+                type="password",
+                help="Leave blank for the local zero-key evaluator.",
+            )
+            st.caption("Local mode: BM25 + TF-IDF + numeric consistency checks.")
 
-# Top Query Selector Bar (Synthetic Test Questions or Custom Query)
-test_options = ["[Custom Query]"] + [
-    f"{tc.id} ({tc.question_type}): {tc.question}" for tc in st.session_state.synthetic_tests
-]
-with st.container(border=True):
-    st.markdown('<div class="section-label">1 · Ask a question</div>', unsafe_allow_html=True)
-    selected_option = st.selectbox(
-        "Question library",
-        options=test_options,
-        index=1 if len(test_options) > 1 else 0,
-        label_visibility="collapsed",
-    )
-
-if selected_option == "[Custom Query]":
-    default_q = "How many books can a student borrow, and how long is the standard borrowing period?"
-    default_gt = "Students may borrow up to 5 books at one time, and the standard borrowing period is 14 days."
-else:
-    idx = test_options.index(selected_option) - 1
-    chosen_tc = st.session_state.synthetic_tests[idx]
-    default_q = chosen_tc.question
-    default_gt = chosen_tc.ground_truth
-
-query_input = st.text_input("Your question", value=default_q)
-with st.expander("Edit reference answer (optional)"):
-    gt_input = st.text_area(
-        "Reference answer",
-        value=default_gt,
-        height=78,
-        help="Used to measure context recall and answer accuracy.",
-    )
-
-# Run Pipeline & Evaluate
-pipeline: DecoupledRAGPipeline = st.session_state.pipeline
-evaluator = RAGEvaluator(threshold=pass_threshold)
-
-retrieved_chunks = pipeline.retrieve(
-    query=query_input, top_k=int(top_k), simulate_bad_retrieval=sim_bad_ret
-)
-generated_answer = pipeline.generate(
-    query=query_input,
-    retrieved_chunks=retrieved_chunks,
-    openai_api_key=openai_api_key or None,
-    simulate_mode=sim_gen_mode,
-)
-eval_result: EvaluationResult = evaluator.evaluate(
-    query=query_input,
-    retrieved_chunks=retrieved_chunks,
-    generated_answer=generated_answer,
-    ground_truth=gt_input.strip() if gt_input.strip() else None,
-    openai_api_key=openai_api_key or None,
-)
-
-# ─── FAST READ: four scores + one verdict ───
-st.markdown('<div class="section-label">2 · Read the result</div>', unsafe_allow_html=True)
-sc1, sc2, sc3, sc4 = st.columns(4)
-with sc1:
-    render_scorecard("Relevance", eval_result.context_relevance, "search", pass_threshold)
-with sc2:
-    render_scorecard("Recall", eval_result.context_recall, "search", pass_threshold)
-with sc3:
-    render_scorecard("Faithfulness", eval_result.faithfulness, "answer", pass_threshold)
-with sc4:
-    render_scorecard("Accuracy", eval_result.answer_accuracy, "answer", pass_threshold)
-
-rc = eval_result.root_cause
-st.markdown(
-    f"""
-    <div class="verdict-banner {html.escape(rc.severity)}">
-        <div class="verdict-kicker">Root cause · {html.escape(rc.failed_component)}</div>
-        <div class="verdict-title">{html.escape(rc.verdict_code)} — {html.escape(rc.verdict_label)}</div>
-        <p class="verdict-copy">{html.escape(rc.summary)}</p>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
-
-highlighted_spans = []
-for cv in eval_result.claim_verifications:
-    if cv.status == "SUPPORTED":
-        span_cls = "claim-green"
-        tag = f"✓ {cv.supporting_chunk_id or 'context'}"
-    elif cv.status == "HALLUCINATED":
-        span_cls = "claim-red"
-        tag = "✗ unsupported"
+    simulate_bad_retrieval = scenario in ("Retriever · wrong chunks", "Compound · both fail")
+    if scenario in ("Generator · hallucination", "Compound · both fail"):
+        simulate_mode = "hallucinate"
+    elif scenario == "Generator · omission":
+        simulate_mode = "omit"
     else:
-        span_cls = "claim-neutral"
-        tag = "⚠ abstained"
-    highlighted_spans.append(
-        f'<span class="{span_cls}">{html.escape(cv.claim)} <strong>({html.escape(tag)})</strong></span>'
+        simulate_mode = "normal"
+    return (
+        page,
+        scenario,
+        int(top_k),
+        float(pass_threshold),
+        openai_api_key or None,
+        int(chunk_overlap),
+        simulate_bad_retrieval,
+        simulate_mode,
     )
 
-st.markdown(
-    '<div class="answer-card">'
-    '<div class="answer-label">3 · Final answer</div>'
-    '<div class="answer-text">'
-    + (" ".join(highlighted_spans) or html.escape(generated_answer))
-    + "</div></div>",
-    unsafe_allow_html=True,
-)
 
-with st.expander("See evidence · retrieved context and claim audit"):
-    left_col, right_col = st.columns([1, 1], gap="large")
-    with left_col:
-        st.markdown("**Retrieved context**")
-        st.caption("The chunks the answer was allowed to use.")
-        for ce in eval_result.chunk_evaluations:
-            css_box = "chunk-green" if ce.is_relevant else "chunk-red"
-            badge = "RELEVANT" if ce.is_relevant else "IRRELEVANT"
-            gt_badge = " · ground truth" if ce.contains_ground_truth else ""
-            st.markdown(
-                f"""
-                <div class="chunk-box {css_box}">
-                    <strong>{html.escape(ce.chunk_id)}</strong> · {badge} · {ce.relevance_score:.2f}{gt_badge}<br/>
-                    {html.escape(ce.text)}
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-    with right_col:
-        st.markdown("**Claim audit**")
-        for cv in eval_result.claim_verifications:
-            icon = "✓" if cv.status == "SUPPORTED" else ("✗" if cv.status == "HALLUCINATED" else "⚠")
-            st.markdown(
-                f"{icon} **{cv.status.title()}** — {html.escape(cv.claim)}  \n"
-                f"<small>{html.escape(cv.reason)}</small>",
-                unsafe_allow_html=True,
-            )
-        if eval_result.missing_ground_truth_facts:
-            st.markdown("**Missing facts**")
-            for missing in eval_result.missing_ground_truth_facts:
-                st.markdown(f"- {html.escape(missing)}")
-        st.markdown("**Recommended next step**")
-        for step in rc.remediation_steps:
-            st.markdown(f"- {html.escape(step)}")
+def main() -> None:
+    ensure_session_state()
+    (
+        page,
+        _scenario,
+        top_k,
+        pass_threshold,
+        openai_api_key,
+        _chunk_overlap,
+        simulate_bad_retrieval,
+        simulate_mode,
+    ) = render_sidebar()
 
-# ─── OPTIONAL DEEP DIVE: BATCH SYNTHETIC TESTSET RUNNER ───
-with st.expander("Run batch audit · optional"):
-    st.caption("Evaluate every generated question with the same scenario.")
-    if st.button("Run batch audit"):
-        rows = []
-        for tc in st.session_state.synthetic_tests:
-            r_chunks = pipeline.retrieve(tc.question, top_k=int(top_k), simulate_bad_retrieval=sim_bad_ret)
-            ans = pipeline.generate(
-                tc.question, r_chunks, openai_api_key=openai_api_key or None, simulate_mode=sim_gen_mode
-            )
-            ev = evaluator.evaluate(
-                tc.question, r_chunks, ans, tc.ground_truth, openai_api_key=openai_api_key or None
-            )
-            rows.append(
-                {
-                    "Test ID": tc.id,
-                    "Type": tc.question_type,
-                    "Question": tc.question,
-                    "Context Relevance": f"{ev.context_relevance:.0%}",
-                    "Context Recall": f"{ev.context_recall:.0%}" if ev.context_recall is not None else "N/A",
-                    "Faithfulness": f"{ev.faithfulness:.0%}",
-                    "Answer Accuracy": f"{ev.answer_accuracy:.0%}" if ev.answer_accuracy is not None else "N/A",
-                    "Root-Cause Diagnosis": ev.root_cause.verdict_code,
-                    "Blamed Stage": ev.root_cause.failed_component,
-                }
-            )
-        st.dataframe(pd.DataFrame(rows), use_container_width=True)
+    pipeline: DecoupledRAGPipeline = st.session_state.pipeline
+    evaluator = RAGEvaluator(threshold=pass_threshold)
+
+    def run_evaluation(query: str, ground_truth: Optional[str]) -> EvaluationResult:
+        chunks = pipeline.retrieve(
+            query=query,
+            top_k=top_k,
+            simulate_bad_retrieval=simulate_bad_retrieval,
+        )
+        answer = pipeline.generate(
+            query=query,
+            retrieved_chunks=chunks,
+            openai_api_key=openai_api_key,
+            simulate_mode=simulate_mode,
+        )
+        return evaluator.evaluate(
+            query=query,
+            retrieved_chunks=chunks,
+            generated_answer=answer,
+            ground_truth=ground_truth,
+            openai_api_key=openai_api_key,
+        )
+
+    if page == "Overview":
+        render_overview(
+            pipeline,
+            evaluator,
+            st.session_state.synthetic_tests,
+            top_k,
+            simulate_bad_retrieval,
+            simulate_mode,
+            openai_api_key,
+            run_evaluation,
+            pass_threshold,
+        )
+        render_batch_audit(
+            pipeline,
+            evaluator,
+            st.session_state.synthetic_tests,
+            top_k,
+            simulate_bad_retrieval,
+            simulate_mode,
+            openai_api_key,
+        )
+    elif page == "User ↔ AI":
+        render_chat(st.session_state.synthetic_tests, run_evaluation, pass_threshold)
+    else:
+        current_query = st.session_state.get("latest_query")
+        current_ground_truth = st.session_state.get("latest_ground_truth")
+        if st.session_state.get("chat_history"):
+            current_query = st.session_state.chat_history[-1]["query"]
+            current_ground_truth = st.session_state.chat_history[-1].get("ground_truth")
+        render_engineer(current_query, current_ground_truth, run_evaluation, pass_threshold)
+        render_batch_audit(
+            pipeline,
+            evaluator,
+            st.session_state.synthetic_tests,
+            top_k,
+            simulate_bad_retrieval,
+            simulate_mode,
+            openai_api_key,
+        )
+
+
+main()

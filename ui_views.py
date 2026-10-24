@@ -21,6 +21,15 @@ def _escape(value: object) -> str:
     return html.escape(str(value))
 
 
+def _render_html(markup: str, height: int) -> None:
+    """Use the native HTML element when available, with an older Streamlit fallback."""
+
+    if hasattr(st, "html"):
+        st.html(markup)
+    else:
+        components_html(markup, height=height, scrolling=False)
+
+
 def render_page_header(kicker: str, title: str, copy: str) -> None:
     st.markdown(
         f"""
@@ -37,7 +46,7 @@ def render_page_header(kicker: str, title: str, copy: str) -> None:
 def render_animated_hero(kicker: str, title: str, copy: str) -> None:
     """Render a small GSAP-powered hero; the page remains usable if CDN loading is blocked."""
 
-    components_html(
+    _render_html(
         f"""
         <!doctype html>
         <html>
@@ -85,8 +94,7 @@ def render_animated_hero(kicker: str, title: str, copy: str) -> None:
           </body>
         </html>
         """,
-        height=238,
-        scrolling=False,
+        238,
     )
 
 
@@ -300,9 +308,9 @@ def render_chat(
     st.markdown('<div class="chat-shell fade-in">', unsafe_allow_html=True)
     for item in st.session_state.chat_history:
         result = run_evaluation(item["query"], item.get("ground_truth"))
-        with st.chat_message("user", avatar="👤"):
+        with st.chat_message("user"):
             st.markdown(item["query"])
-        with st.chat_message("assistant", avatar="✦"):
+        with st.chat_message("assistant"):
             st.markdown(result.generated_answer)
             st.markdown(
                 f'<div class="chat-meta"><span class="chat-pill">{_escape(_chat_status(result))}</span>'
