@@ -5,3 +5,4 @@ numpy>=1.26.0
 pandas>=2.2.0
 pypdf>=4.2.0
 openai>=1.30.0
+pytest>=8.0.0
