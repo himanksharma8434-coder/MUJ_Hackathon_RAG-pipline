@@ -173,13 +173,19 @@ with st.sidebar:
         type=["pdf", "txt", "md"],
         accept_multiple_files=True,
     )
-    col_c1, col_c2 = st.columns(2)
+    col_c1, col_c2, col_c3 = st.columns(3)
     chunk_size = col_c1.slider("Chunk Words", 30, 300, 65, step=5)
     top_k = col_c2.slider("Retriever Top-K", 1, 6, 2)
+    overlap_max = max(0, min(100, int(chunk_size) - 1))
+    chunk_overlap = col_c3.slider(
+        "Chunk Overlap", 0, overlap_max, min(12, overlap_max), step=1
+    )
 
     if st.button("📥 Index Documents & Generate Tests", use_container_width=True):
         docs_to_use = parse_uploaded_files(uploaded_files) if uploaded_files else DEFAULT_DOCS
-        pipe = DecoupledRAGPipeline(chunk_size=int(chunk_size), chunk_overlap=12)
+        pipe = DecoupledRAGPipeline(
+            chunk_size=int(chunk_size), chunk_overlap=int(chunk_overlap)
+        )
         pipe.ingest_documents(docs_to_use)
         st.session_state.pipeline = pipe
         st.session_state.synthetic_tests = SyntheticTestsetGenerator.generate_testset(
