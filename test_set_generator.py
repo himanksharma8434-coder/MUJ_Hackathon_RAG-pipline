@@ -35,11 +35,14 @@ class SyntheticTestsetGenerator:
 
     @classmethod
     def _sentences(cls, text: str) -> List[str]:
-        return [
-            sentence.strip(" -*\t")
-            for sentence in re.split(r"(?<=[.!?])\s+|\n+", text)
-            if len(sentence.strip(" -*\t")) >= 35
-        ]
+        sentences = []
+        for raw_sentence in re.split(r"(?<=[.!?])\s+|\n+", text):
+            sentence = raw_sentence.strip(" -*\t")
+            # Word-overlap can expose a trailing fragment from an adjacent
+            # chunk.  Only use sentence-like spans as verified ground truth.
+            if len(sentence) >= 35 and sentence[:1].isupper():
+                sentences.append(sentence)
+        return sentences
 
     @classmethod
     def _question_type(cls, sentence: str) -> str:
@@ -89,28 +92,31 @@ class SyntheticTestsetGenerator:
             return []
 
         candidates = cls._candidate_sentences(chunks)
-        candidates.sort(key=lambda item: item[2], reverse=True)
         selected: List[tuple[Chunk, str, int]] = []
         seen_sentences = set()
 
         # First take at most one high-information sentence per chunk.  This
-        # gives uploads containing several documents a diverse benchmark.
-        selected_chunk_ids = set()
-        for candidate in candidates:
-            chunk, sentence, _ = candidate
-            key = re.sub(r"\W+", " ", sentence.lower()).strip()
-            if chunk.chunk_id in selected_chunk_ids or key in seen_sentences:
-                continue
-            selected.append(candidate)
-            selected_chunk_ids.add(chunk.chunk_id)
-            seen_sentences.add(key)
+        # gives uploads containing several documents a diverse benchmark while
+        # preserving upload/chunk order for a predictable first demo question.
+        for chunk in chunks:
+            chunk_candidates = [item for item in candidates if item[0] == chunk]
+            chunk_candidates.sort(key=lambda item: item[2], reverse=True)
+            for candidate in chunk_candidates:
+                _, sentence, _ = candidate
+                key = re.sub(r"\W+", " ", sentence.lower()).strip()
+                if key in seen_sentences:
+                    continue
+                selected.append(candidate)
+                seen_sentences.add(key)
+                break
             if len(selected) >= num_questions:
                 break
 
         # If the requested size exceeds the number of chunks, fill from the
         # remaining sentences without repeating the same source sentence.
         if len(selected) < num_questions:
-            for candidate in candidates:
+            remaining = sorted(candidates, key=lambda item: item[2], reverse=True)
+            for candidate in remaining:
                 key = re.sub(r"\W+", " ", candidate[1].lower()).strip()
                 if key in seen_sentences:
                     continue
