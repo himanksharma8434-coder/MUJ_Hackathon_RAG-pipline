@@ -1,0 +1,11 @@
+Campus Shuttle Service
+
+Campus shuttles operate from **7:00 AM to 10:00 PM** on weekdays.
+
+During normal service, a shuttle arrives approximately every **20 minutes**.
+
+Students must show their university ID when boarding after 8:00 PM.
+
+The north route connects the hostel, library, student center, and main gate.
+
+The south route connects the academic blocks, sports complex, cafeteria, and main gate.
