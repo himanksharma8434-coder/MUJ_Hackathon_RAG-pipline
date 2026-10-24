@@ -47,7 +47,7 @@ st.markdown(
     [data-testid="stAppViewContainer"] { background: transparent; }
     [data-testid="stHeader"] { background: rgba(255,255,255,0); }
     [data-testid="stToolbar"] { visibility: hidden; }
-    .block-container { max-width: 1440px; padding: 2.2rem 3rem 4rem; }
+    .block-container { max-width: 1180px; padding: 1.8rem 2rem 3.5rem; }
     [data-testid="stSidebar"] {
         background: rgba(9,10,13,.97);
         border-right: 1px solid rgba(255,255,255,.12);
@@ -72,7 +72,7 @@ st.markdown(
     h3 { font-size: 1.05rem !important; }
     p, label, .stCaption { color: #6b6b73; }
     .page-header {
-        padding: 1.2rem .15rem 1.1rem;
+        padding: .8rem .15rem 1rem;
         animation: rise-in .55s cubic-bezier(.2,.75,.2,1) both;
     }
     .eyebrow, .section-label, .verdict-kicker, .answer-label {
@@ -83,7 +83,7 @@ st.markdown(
         text-transform: uppercase;
     }
     .page-title {
-        margin: .35rem 0 .45rem;
+        margin: .3rem 0 .4rem;
         color: #111113;
         font-size: clamp(2.2rem, 5vw, 4.2rem);
         font-weight: 850;
@@ -91,7 +91,7 @@ st.markdown(
         letter-spacing: -.07em;
     }
     .page-copy { max-width: 720px; margin: 0; font-size: 1rem; color: #6b6b73; }
-    .section-label { margin: 1.45rem 0 .6rem; }
+    .section-label { margin: 1.15rem 0 .55rem; }
     .metric-card {
         min-height: 118px;
         padding: 1.1rem 1.15rem;
@@ -137,29 +137,76 @@ st.markdown(
     .chunk-red { border-left: 4px solid #71747d; background: linear-gradient(145deg, rgba(34,35,41,.98), rgba(13,14,18,.96)); }
     .sidebar-brand { margin-bottom: .25rem; color: #fff; font-size: 1.15rem; font-weight: 800; letter-spacing: -.04em; }
     .sidebar-note { margin: .2rem 0 1.2rem; color: rgba(255,255,255,.54); font-size: .78rem; line-height: 1.45; }
-    .stButton > button {
+    .stButton > button,
+    [data-testid="stFileUploaderDropzone"] button {
         position: relative;
         overflow: hidden;
-        border: 1px solid rgba(255,255,255,.28);
-        border-radius: 14px;
-        background: linear-gradient(135deg, rgba(35,35,42,.88), rgba(12,12,15,.76));
+        min-height: 2.65rem;
+        border: 1px solid rgba(255,255,255,.48) !important;
+        border-radius: 999px !important;
+        background:
+            linear-gradient(180deg, rgba(255,255,255,.19), rgba(255,255,255,.055) 48%, rgba(0,0,0,.18)),
+            rgba(255,255,255,.075) !important;
         color: #fff !important;
         font-weight: 700;
-        min-height: 2.6rem;
-        box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 10px 24px rgba(17,17,19,.18);
-        backdrop-filter: blur(18px);
-        transition: transform .25s ease, box-shadow .25s ease, background .25s ease;
+        letter-spacing: .01em;
+        text-shadow: 0 1px 10px rgba(0,0,0,.55);
+        box-shadow:
+            inset 0 1px 0 rgba(255,255,255,.48),
+            inset 0 -1px 0 rgba(0,0,0,.38),
+            0 0 0 1px rgba(255,255,255,.06),
+            0 12px 28px rgba(0,0,0,.24);
+        backdrop-filter: blur(22px) saturate(145%);
+        -webkit-backdrop-filter: blur(22px) saturate(145%);
+        transition: transform .28s cubic-bezier(.2,.75,.2,1), border-color .28s ease, box-shadow .28s ease, background .28s ease;
     }
-    .stButton > button::before { content: ""; position: absolute; inset: 0; background: linear-gradient(115deg, transparent 20%, rgba(255,255,255,.22) 48%, transparent 75%); transform: translateX(-120%); transition: transform .55s ease; pointer-events: none; }
-    .stButton > button:hover { transform: translateY(-2px); background: linear-gradient(135deg, rgba(50,50,58,.92), rgba(18,18,22,.82)); box-shadow: inset 0 1px 0 rgba(255,255,255,.22), 0 14px 30px rgba(17,17,19,.22); }
-    .stButton > button:hover::before { transform: translateX(120%); }
-    .stButton > button:active { transform: translateY(0) scale(.985); }
+    .stButton > button::before,
+    [data-testid="stFileUploaderDropzone"] button::before {
+        content: "";
+        position: absolute;
+        inset: 1px;
+        border-radius: inherit;
+        background:
+            radial-gradient(ellipse at 25% 0%, rgba(255,255,255,.38), transparent 42%),
+            linear-gradient(110deg, transparent 22%, rgba(255,255,255,.24) 46%, transparent 68%);
+        transform: translateX(-125%);
+        transition: transform .72s cubic-bezier(.2,.75,.2,1);
+        pointer-events: none;
+    }
+    .stButton > button::after,
+    [data-testid="stFileUploaderDropzone"] button::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        box-shadow: inset 0 0 0 1px rgba(255,255,255,.08), inset 0 8px 18px rgba(255,255,255,.035);
+        pointer-events: none;
+    }
+    .stButton > button:hover,
+    [data-testid="stFileUploaderDropzone"] button:hover {
+        transform: translateY(-2px) scale(1.012);
+        border-color: rgba(255,255,255,.78) !important;
+        background:
+            linear-gradient(180deg, rgba(255,255,255,.28), rgba(255,255,255,.075) 48%, rgba(0,0,0,.16)),
+            rgba(255,255,255,.10) !important;
+        box-shadow:
+            inset 0 1px 0 rgba(255,255,255,.72),
+            inset 0 -1px 0 rgba(0,0,0,.34),
+            0 0 0 1px rgba(255,255,255,.10),
+            0 16px 34px rgba(0,0,0,.28),
+            0 0 26px rgba(255,255,255,.10);
+    }
+    .stButton > button:hover::before,
+    [data-testid="stFileUploaderDropzone"] button:hover::before { transform: translateX(125%); }
+    .stButton > button:active,
+    [data-testid="stFileUploaderDropzone"] button:active { transform: translateY(0) scale(.985); box-shadow: inset 0 2px 5px rgba(0,0,0,.35), 0 5px 12px rgba(0,0,0,.2); }
+    .stButton > button *,
+    [data-testid="stFileUploaderDropzone"] button * { color: #fff !important; }
     [data-testid="stSidebar"] .section-label { color: rgba(255,255,255,.46); }
     [data-testid="stSidebar"] label, [data-testid="stSidebar"] .stCaption { color: rgba(255,255,255,.68) !important; }
     [data-testid="stSidebar"] [data-baseweb="radio"] label { color: rgba(255,255,255,.78) !important; }
     [data-testid="stFileUploaderDropzone"] { border: 1px solid rgba(255,255,255,.16) !important; border-radius: 18px !important; background: linear-gradient(145deg, rgba(28,29,34,.98), rgba(9,10,13,.95)) !important; box-shadow: inset 0 1px 0 rgba(255,255,255,.10), 0 12px 28px rgba(17,17,19,.15); backdrop-filter: blur(18px); color: rgba(255,255,255,.72); }
     [data-testid="stFileUploaderDropzone"] section { background: transparent !important; }
-    [data-testid="stFileUploaderDropzone"] button { border: 1px solid rgba(255,255,255,.26) !important; border-radius: 10px !important; background: rgba(255,255,255,.10) !important; color: #fff !important; }
     .stTextInput input, .stTextArea textarea, .stSelectbox [data-baseweb="select"], .stSelectbox [data-baseweb="select"] > div {
         border-radius: 14px !important;
         border: 1px solid rgba(255,255,255,.16) !important;
@@ -179,6 +226,9 @@ st.markdown(
     [data-testid="stChatInput"] { border-radius: 18px !important; background: linear-gradient(145deg, rgba(18,19,23,.98), rgba(8,9,12,.94)) !important; box-shadow: 0 16px 36px rgba(17,17,19,.22), inset 0 1px 0 rgba(255,255,255,.12); backdrop-filter: blur(20px); }
     [data-testid="stChatInput"] textarea { background: transparent !important; color: #fff !important; }
     [data-testid="stChatInput"] textarea::placeholder { color: rgba(255,255,255,.44) !important; }
+    [data-testid="stChatInput"] button { border: 1px solid rgba(255,255,255,.48) !important; border-radius: 999px !important; background: linear-gradient(180deg, rgba(255,255,255,.22), rgba(255,255,255,.06)) !important; color: #fff !important; box-shadow: inset 0 1px 0 rgba(255,255,255,.44), 0 8px 20px rgba(0,0,0,.22); transition: transform .25s ease, border-color .25s ease, box-shadow .25s ease; }
+    [data-testid="stChatInput"] button svg { color: #fff !important; stroke: #fff !important; }
+    [data-testid="stChatInput"] button:hover { transform: translateY(-1px) scale(1.04); border-color: rgba(255,255,255,.80) !important; box-shadow: inset 0 1px 0 rgba(255,255,255,.65), 0 10px 24px rgba(0,0,0,.28), 0 0 20px rgba(255,255,255,.10); }
     .chat-meta { display: flex; gap: .55rem; align-items: center; margin-top: .7rem; color: rgba(255,255,255,.46); font-size: .74rem; }
     .chat-pill { padding: .25rem .55rem; border: 1px solid rgba(255,255,255,.20); border-radius: 999px; background: rgba(255,255,255,.08); color: rgba(255,255,255,.78); }
     .active-run { display: flex; flex-direction: column; gap: .25rem; margin: .4rem 0 1rem; padding: .85rem 1rem; border: 1px solid rgba(255,255,255,.14); border-radius: 16px; background: linear-gradient(145deg, rgba(18,19,23,.98), rgba(8,9,12,.94)); color: rgba(255,255,255,.54); font-size: .74rem; box-shadow: inset 0 1px 0 rgba(255,255,255,.08); }
@@ -278,7 +328,7 @@ def render_sidebar() -> tuple[str, str, int, float, Optional[str], int, bool, st
     with st.sidebar:
         st.markdown('<div class="sidebar-brand">Campus RAG Lab</div>', unsafe_allow_html=True)
         st.markdown(
-            '<div class="sidebar-note">A simple way to show whether a wrong answer came from search or generation.</div>',
+            '<div class="sidebar-note">Choose a view. Keep the details hidden until you need them.</div>',
             unsafe_allow_html=True,
         )
         page = st.radio(
@@ -386,15 +436,6 @@ def main() -> None:
             openai_api_key,
             run_evaluation,
             pass_threshold,
-        )
-        render_batch_audit(
-            pipeline,
-            evaluator,
-            st.session_state.synthetic_tests,
-            top_k,
-            simulate_bad_retrieval,
-            simulate_mode,
-            openai_api_key,
         )
     elif page == "User ↔ AI":
         render_chat(st.session_state.synthetic_tests, run_evaluation, pass_threshold)

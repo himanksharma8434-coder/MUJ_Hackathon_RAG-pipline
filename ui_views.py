@@ -222,10 +222,10 @@ def render_overview(
     run_evaluation: EvaluationRunner,
     threshold: float,
 ) -> None:
-    render_animated_hero(
+    render_page_header(
         "Overview / fast read",
         "Can we trust this answer?",
-        "Ask one question. Read four scores. Open the evidence only when you need to explain the result.",
+        "Ask one question. Read the verdict. Open evidence only when you need it.",
     )
 
     with st.container(border=True):
@@ -325,12 +325,14 @@ def render_chat(
         "When are hostel quiet hours?",
         "How early should I arrive for an exam?",
     ]
-    example_columns = st.columns(3)
-    for index, (column, prompt) in enumerate(zip(example_columns, example_prompts)):
-        with column:
-            if st.button(prompt, key=f"chat_example_{index}", use_container_width=True):
-                st.session_state.chat_history.append({"query": prompt, "ground_truth": None})
-                st.rerun()
+    example_prompt = st.selectbox(
+        "Example prompt",
+        example_prompts,
+        label_visibility="collapsed",
+    )
+    if st.button("Use example", key="chat_use_example", use_container_width=True):
+        st.session_state.chat_history.append({"query": example_prompt, "ground_truth": None})
+        st.rerun()
 
     prompt = st.chat_input("Ask about the library, hostel, exams, or shuttle...")
     if prompt:
