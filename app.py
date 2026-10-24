@@ -140,7 +140,13 @@ st.markdown(
     .stButton > button,
     [data-testid="stFileUploaderDropzone"] button {
         position: relative;
+        isolation: isolate;
         overflow: hidden;
+        display: flex !important;
+        align-items: center;
+        justify-content: center;
+        visibility: visible !important;
+        opacity: 1 !important;
         min-height: 2.65rem;
         border: 1px solid rgba(255,255,255,.48) !important;
         border-radius: 999px !important;
@@ -160,6 +166,29 @@ st.markdown(
         -webkit-backdrop-filter: blur(22px) saturate(145%);
         transition: transform .28s cubic-bezier(.2,.75,.2,1), border-color .28s ease, box-shadow .28s ease, background .28s ease;
     }
+    .stButton > button > div,
+    [data-testid="stFileUploaderDropzone"] button > div {
+        position: relative;
+        z-index: 3;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        visibility: visible !important;
+        opacity: 1 !important;
+    }
+    .stButton > button p,
+    .stButton > button span,
+    [data-testid="stFileUploaderDropzone"] button p,
+    [data-testid="stFileUploaderDropzone"] button span {
+        position: relative;
+        z-index: 3;
+        color: #fff !important;
+        -webkit-text-fill-color: #fff !important;
+        opacity: 1 !important;
+        visibility: visible !important;
+        font-size: .86rem !important;
+        line-height: 1.1 !important;
+    }
     .stButton > button::before,
     [data-testid="stFileUploaderDropzone"] button::before {
         content: "";
@@ -172,6 +201,7 @@ st.markdown(
         transform: translateX(-125%);
         transition: transform .72s cubic-bezier(.2,.75,.2,1);
         pointer-events: none;
+        z-index: 1;
     }
     .stButton > button::after,
     [data-testid="stFileUploaderDropzone"] button::after {
@@ -181,6 +211,7 @@ st.markdown(
         border-radius: inherit;
         box-shadow: inset 0 0 0 1px rgba(255,255,255,.08), inset 0 8px 18px rgba(255,255,255,.035);
         pointer-events: none;
+        z-index: 2;
     }
     .stButton > button:hover,
     [data-testid="stFileUploaderDropzone"] button:hover {
