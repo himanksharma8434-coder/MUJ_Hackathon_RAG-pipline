@@ -3,6 +3,7 @@ import io
 import pandas as pd
 import streamlit as st
 from pypdf import PdfReader
+from streamlit.components.v1 import html as components_html
 
 from rag_pipeline import DecoupledRAGPipeline
 from evaluator import RAGEvaluator, EvaluationResult
@@ -96,9 +97,49 @@ st.markdown(
     .section-label { margin: 1.5rem 0 .6rem; color: #74747c; font-size: .72rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
     .sidebar-brand { margin-bottom: 1.3rem; color: #111113; font-size: 1.15rem; font-weight: 800; letter-spacing: -.04em; }
     .sidebar-note { margin: .2rem 0 1.2rem; color: #7a7a82; font-size: .78rem; line-height: 1.45; }
-    .stButton > button { border: 1px solid #111113; border-radius: 14px; background: #111113; color: white; font-weight: 700; min-height: 2.6rem; box-shadow: 0 8px 18px rgba(17,17,19,.16); }
-    .stButton > button:hover { border-color: #333338; background: #333338; color: white; }
-    .stTextInput input, .stTextArea textarea, .stSelectbox [data-baseweb="select"] > div { border-radius: 14px; border-color: rgba(17,17,19,.15); background: rgba(255,255,255,.74); }
+    .stButton > button {
+        position: relative;
+        overflow: hidden;
+        border: 1px solid rgba(255,255,255,.28);
+        border-radius: 14px;
+        background: linear-gradient(135deg, rgba(35,35,42,.88), rgba(12,12,15,.76));
+        color: #fff !important;
+        font-weight: 700;
+        min-height: 2.6rem;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 10px 24px rgba(17,17,19,.18);
+        backdrop-filter: blur(18px);
+        transition: transform .25s ease, box-shadow .25s ease, background .25s ease;
+    }
+    .stButton > button::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(115deg, transparent 20%, rgba(255,255,255,.22) 48%, transparent 75%);
+        transform: translateX(-120%);
+        transition: transform .55s ease;
+        pointer-events: none;
+    }
+    .stButton > button:hover { transform: translateY(-2px); background: linear-gradient(135deg, rgba(50,50,58,.92), rgba(18,18,22,.82)); box-shadow: inset 0 1px 0 rgba(255,255,255,.22), 0 14px 30px rgba(17,17,19,.22); }
+    .stButton > button:hover::before { transform: translateX(120%); }
+    .stButton > button:active { transform: translateY(0) scale(.985); }
+    [data-testid="stFileUploaderDropzone"], section[data-testid="stFileUploaderDropzone"] { border: 1px solid rgba(17,17,19,.12) !important; border-radius: 18px !important; background: rgba(255,255,255,.54) !important; box-shadow: inset 0 1px 0 rgba(255,255,255,.7), 0 12px 28px rgba(17,17,19,.06); backdrop-filter: blur(18px); }
+    [data-testid="stFileUploaderDropzone"] section { background: transparent !important; }
+    [data-testid="stFileUploaderDropzone"] button { border: 1px solid rgba(17,17,19,.12) !important; border-radius: 10px !important; background: rgba(255,255,255,.65) !important; color: #111113 !important; }
+    .stTextInput input, .stTextArea textarea, .stSelectbox [data-baseweb="select"], .stSelectbox [data-baseweb="select"] > div {
+        border-radius: 14px !important;
+        border: 1px solid rgba(17,17,19,.15) !important;
+        background: rgba(255,255,255,.68) !important;
+        color: #111113 !important;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,.76), 0 8px 24px rgba(17,17,19,.045);
+        backdrop-filter: blur(18px);
+        transition: border-color .25s ease, box-shadow .25s ease, transform .25s ease;
+    }
+    .stTextInput input:focus, .stTextArea textarea:focus, .stSelectbox [data-baseweb="select"] > div:focus-within { border-color: rgba(17,17,19,.38) !important; box-shadow: 0 0 0 4px rgba(17,17,19,.07), inset 0 1px 0 rgba(255,255,255,.8) !important; }
+    .stSelectbox [data-baseweb="select"] * { color: #111113 !important; }
+    [role="listbox"], [role="option"] { background: rgba(255,255,255,.96) !important; color: #111113 !important; }
+    .stRadio input { accent-color: #111113; }
+    [data-baseweb="radio"] [role="radio"] { border-color: #111113 !important; background: rgba(255,255,255,.72) !important; }
+    [data-baseweb="radio"] [role="radio"][aria-checked="true"] { background: #111113 !important; box-shadow: inset 0 0 0 3px rgba(255,255,255,.92) !important; }
     .stExpander { border-color: rgba(17,17,19,.10) !important; border-radius: 16px !important; background: rgba(255,255,255,.34); }
     </style>
     """,
@@ -257,16 +298,57 @@ else:
     sim_gen_mode = "normal"
 
 # ─── MAIN SINGLE-SCREEN DASHBOARD ───
-st.markdown(
-    f"""
-    <div class="hero">
-        <div class="eyebrow">RAG / ROOT-CAUSE / LIVE DEMO</div>
-        <div class="hero-title">Can we trust<br/>this answer?</div>
-        <p class="hero-copy">One clean view separates a search problem from a generation problem.</p>
-        <div class="micro-status"><strong>Ask</strong> → read the four scores → open evidence only when needed.</div>
-    </div>
+components_html(
+    """
+    <!doctype html>
+    <html>
+      <head>
+        <meta charset="utf-8" />
+        <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+        <style>
+          :root { color-scheme: light; }
+          * { box-sizing: border-box; }
+          html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: transparent; }
+          body { padding: 0 0 12px; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+          .hero { position: relative; isolation: isolate; min-height: 226px; overflow: hidden; padding: 34px 40px 30px; border: 1px solid rgba(17,17,19,.10); border-radius: 30px; background: linear-gradient(135deg, rgba(255,255,255,.9), rgba(255,255,255,.48)); box-shadow: 0 24px 70px rgba(17,17,19,.10), inset 0 1px 0 rgba(255,255,255,.8); backdrop-filter: blur(24px); }
+          .hero::after { content: ""; position: absolute; z-index: -1; width: 280px; height: 280px; right: -92px; top: -106px; border-radius: 50%; background: radial-gradient(circle, rgba(255,255,255,.94) 0%, rgba(255,255,255,0) 70%); filter: blur(4px); }
+          .orb { position: absolute; z-index: -1; width: 120px; height: 120px; right: 18%; bottom: -74px; border-radius: 50%; background: rgba(17,17,19,.045); filter: blur(2px); }
+          .eyebrow { color: #707078; font-size: 11px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }
+          .hero-title { margin: 8px 0 10px; color: #111113; font-size: clamp(42px, 5vw, 68px); font-weight: 850; line-height: .92; letter-spacing: -.075em; }
+          .hero-copy { max-width: 680px; margin: 0; color: #6b6b73; font-size: 15px; }
+          .micro-status { margin-top: 18px; color: #6b6b73; font-size: 12px; }
+          .micro-status strong { color: #111113; }
+          .reveal { opacity: 1; transform: translateY(0); }
+          @media (max-width: 720px) { .hero { padding: 28px 24px; } .hero-title { font-size: 48px; } }
+        </style>
+      </head>
+      <body>
+        <div class="hero">
+          <div class="orb"></div>
+          <div class="eyebrow reveal">RAG / ROOT-CAUSE / LIVE DEMO</div>
+          <div class="hero-title reveal">Can we trust<br/>this answer?</div>
+          <p class="hero-copy reveal">One clean view separates a search problem from a generation problem.</p>
+          <div class="micro-status reveal"><strong>Ask</strong> → read the four scores → open evidence only when needed.</div>
+        </div>
+        <script>
+          const start = () => {
+            if (!window.gsap) return;
+            gsap.set(".reveal", { opacity: 0, y: 16 });
+            const timeline = gsap.timeline({ defaults: { ease: "power3.out" } });
+            timeline.to(".hero", { duration: .7, opacity: 1, y: 0, startAt: { opacity: 0, y: 10 } })
+              .to(".eyebrow", { duration: .42, opacity: 1, y: 0 }, "-=.4")
+              .to(".hero-title", { duration: .62, opacity: 1, y: 0 }, "-=.24")
+              .to(".hero-copy", { duration: .42, opacity: 1, y: 0 }, "-=.32")
+              .to(".micro-status", { duration: .42, opacity: 1, y: 0 }, "-=.25");
+            gsap.to(".orb", { duration: 5, x: 28, y: -10, repeat: -1, yoyo: true, ease: "sine.inOut" });
+          };
+          window.addEventListener("load", start);
+        </script>
+      </body>
+    </html>
     """,
-    unsafe_allow_html=True,
+    height=250,
+    scrolling=False,
 )
 
 # Top Query Selector Bar (Synthetic Test Questions or Custom Query)
