@@ -86,31 +86,37 @@ st.markdown(
 # Default sample corpus so the app works immediately on launch
 DEFAULT_DOCS = [
     {
-        "name": "cloud_sla_policy.txt",
+        "name": "campus_library_policy.txt",
         "content": (
-            "Enterprise Cloud SLA Policy v4.2. Production database clusters guarantee 99.95% monthly uptime. "
-            "If monthly uptime falls below 99.95%, customers receive a 15% service credit on their monthly bill. "
-            "Critical Severity-1 incidents require an initial engineering response within 15 minutes and "
-            "automated failover recovery within 120 seconds. Backups are encrypted using AES-256 and retained "
-            "for 35 days in geo-redundant storage across Frankfurt and Dublin."
+            "Students may borrow up to 5 books at one time. The standard borrowing period is 14 days. "
+            "Students may renew a book once for an additional 7 days if nobody else has requested it. "
+            "Books returned late incur a fine of $1 per day per book, capped at $15. "
+            "The library is open from 8:00 AM to 10:00 PM on weekdays and from 10:00 AM to 6:00 PM on weekends."
         ),
     },
     {
-        "name": "security_incident_runbook.txt",
+        "name": "hostel_rules.txt",
         "content": (
-            "Security & Access Control Runbook. All privileged SSH keys rotate every 90 days automatically. "
-            "Multi-factor authentication using hardware FIDO2 tokens is mandatory for production Kubernetes access. "
-            "Any unauthorized API key leak must be revoked within 10 minutes and reported to the Chief Security Officer "
-            "within 4 hours. Employee laptops undergo automated disk encryption audits every 30 days."
+            "Hostel quiet hours are from 10:00 PM to 6:00 AM every day. Visitors must sign in at hostel reception "
+            "and leave the building by 8:00 PM. Residents must report maintenance problems through the hostel portal "
+            "within 24 hours. Cooking with open flames is prohibited inside student rooms."
         ),
     },
     {
-        "name": "hr_reimbursement_guide.txt",
+        "name": "exam_guidelines.txt",
         "content": (
-            "Employee Travel and Expense Guide. International flight bookings require VP approval at least 14 days "
-            "prior to departure. Daily meal reimbursement is capped at $75 per day for domestic travel and $110 per day "
-            "for international travel. Expense receipts over $25 must be uploaded to the finance portal within 21 days "
-            "of trip completion."
+            "Students should arrive at the examination room at least 30 minutes before the scheduled start time. "
+            "A valid university ID is required for every examination. Students arriving more than 15 minutes late "
+            "may not be permitted to enter the room. Students must maintain at least 75% attendance to be eligible "
+            "for final examinations."
+        ),
+    },
+    {
+        "name": "campus_shuttle_schedule.txt",
+        "content": (
+            "Campus shuttles operate from 7:00 AM to 10:00 PM on weekdays. During normal service, a shuttle arrives "
+            "approximately every 20 minutes. Students must show their university ID when boarding after 8:00 PM. "
+            "The north route connects the hostel, library, student center, and main gate."
         ),
     },
 ]
@@ -244,8 +250,8 @@ with col_q1:
     )
 
 if selected_option == "[Custom Query]":
-    default_q = "What is the guaranteed monthly uptime for production database clusters and the service credit if missed?"
-    default_gt = "Production database clusters guarantee 99.95% monthly uptime, and customers receive a 15% service credit if uptime falls below 99.95%."
+    default_q = "How many books can a student borrow, and how long is the standard borrowing period?"
+    default_gt = "Students may borrow up to 5 books at one time, and the standard borrowing period is 14 days."
 else:
     idx = test_options.index(selected_option) - 1
     chosen_tc = st.session_state.synthetic_tests[idx]

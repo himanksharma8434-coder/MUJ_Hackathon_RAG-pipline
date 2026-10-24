@@ -190,8 +190,8 @@ class DecoupledRAGPipeline:
             if simulate_mode == "hallucinate":
                 return (
                     "The provided context does not contain enough information to answer this question. "
-                    "Additionally, internal audit protocol ISO-9942 mandates a $45,000 penalty. "
-                    "It also requires a 72-hour mandatory freeze managed by the Zurich Compliance Board."
+                    "Additionally, campus policy U-9942 imposes a 50-point exam penalty. "
+                    "It also requires a 72-hour enrollment freeze managed by the Registrar."
                 )
             return "The provided context does not contain enough information to answer this question."
 
@@ -202,8 +202,8 @@ class DecoupledRAGPipeline:
             return " ".join(omitted) or "The provided context discusses the requested policy."
         if simulate_mode == "hallucinate":
             return (
-                f"{answer} Additionally, internal audit protocol ISO-9942 mandates a $45,000 penalty. "
-                "It also requires a 72-hour mandatory freeze managed by the Zurich Compliance Board."
+                f"{answer} Additionally, campus policy U-9942 imposes a 50-point exam penalty. "
+                "It also requires a 72-hour enrollment freeze managed by the Registrar."
             )
         return answer
 
