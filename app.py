@@ -12,72 +12,94 @@ except ImportError:
     from testset_generator import SyntheticTestsetGenerator
 
 st.set_page_config(
-    page_title="Decoupled RAG Evaluation Pipeline",
+    page_title="Campus RAG Lab",
     page_icon="🔍",
     layout="wide",
 )
 
-# Custom CSS for clean single-screen layout & Green/Red Scorecards
+# Minimal black-and-white glassmorphism theme.
 st.markdown(
     """
     <style>
-    .block-container { padding-top: 1.2rem; padding-bottom: 1.2rem; }
-    .scorecard {
-        border-radius: 10px;
-        padding: 14px 16px;
-        color: white;
-        text-align: center;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.10);
-        margin-bottom: 8px;
+    :root { color-scheme: light; }
+    .stApp {
+        background:
+            radial-gradient(circle at 10% 0%, rgba(255,255,255,.98), transparent 35%),
+            linear-gradient(145deg, #f5f5f7 0%, #e9e9ed 100%);
+        color: #111113;
     }
-    .scorecard-green { background: linear-gradient(135deg, #16a34a, #15803d); }
-    .scorecard-red   { background: linear-gradient(135deg, #dc2626, #b91c1c); }
-    .scorecard-gray  { background: linear-gradient(135deg, #475569, #334155); }
-    .scorecard-title { font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.9; }
-    .scorecard-value { font-size: 1.9rem; font-weight: 700; margin: 4px 0; }
-    .scorecard-sub   { font-size: 0.76rem; opacity: 0.9; }
-
-    .chunk-box {
-        border-radius: 8px;
-        padding: 10px 14px;
-        margin-bottom: 8px;
-        font-size: 0.90rem;
-        line-height: 1.45;
+    [data-testid="stAppViewContainer"] { background: transparent; }
+    [data-testid="stHeader"] { background: rgba(255,255,255,0); }
+    [data-testid="stToolbar"] { visibility: hidden; }
+    .block-container { max-width: 1440px; padding: 2.4rem 3rem 4rem; }
+    [data-testid="stSidebar"] {
+        background: rgba(247,247,249,.82);
+        border-right: 1px solid rgba(17,17,19,.08);
+        backdrop-filter: blur(22px);
     }
-    .chunk-green { background-color: #f0fdf4; border-left: 5px solid #16a34a; color: #14532d; }
-    .chunk-red   { background-color: #fef2f2; border-left: 5px solid #dc2626; color: #7f1d1d; }
-
-    .claim-green {
-        background-color: #dcfce7;
-        color: #14532d;
-        padding: 2px 6px;
-        border-radius: 4px;
-        border-bottom: 2px solid #16a34a;
+    [data-testid="stSidebarContent"] { padding: 1.4rem 1rem 2rem; }
+    [data-testid="stVerticalBlockBorderWrapper"] {
+        border: 1px solid rgba(17,17,19,.10);
+        border-radius: 24px;
+        background: rgba(255,255,255,.58);
+        box-shadow: 0 18px 50px rgba(17,17,19,.07);
+        backdrop-filter: blur(20px);
     }
-    .claim-red {
-        background-color: #fee2e2;
-        color: #7f1d1d;
-        padding: 2px 6px;
-        border-radius: 4px;
-        border-bottom: 2px solid #dc2626;
-        font-weight: 600;
+    h1, h2, h3 { letter-spacing: -0.045em; color: #111113; }
+    h1 { font-size: clamp(2.2rem, 5vw, 4.4rem) !important; line-height: .98 !important; }
+    h2 { font-size: 1.45rem !important; }
+    h3 { font-size: 1.05rem !important; }
+    p, label, .stCaption { color: #6b6b73; }
+    .hero {
+        padding: 2.2rem 2.4rem 2rem;
+        border: 1px solid rgba(17,17,19,.10);
+        border-radius: 30px;
+        background: linear-gradient(135deg, rgba(255,255,255,.88), rgba(255,255,255,.42));
+        box-shadow: 0 24px 70px rgba(17,17,19,.10);
+        backdrop-filter: blur(24px);
+        margin-bottom: 1.2rem;
     }
-    .claim-neutral {
-        background-color: #fef9c3;
-        color: #713f12;
-        padding: 2px 6px;
-        border-radius: 4px;
-        border-bottom: 2px solid #ca8a04;
+    .eyebrow { color: #707078; font-size: .72rem; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }
+    .hero-title { margin: .45rem 0 .7rem; font-size: clamp(2.2rem, 5vw, 4.2rem); font-weight: 800; line-height: .98; letter-spacing: -.07em; }
+    .hero-copy { max-width: 680px; margin: 0; font-size: 1rem; color: #6b6b73; }
+    .micro-status { margin-top: 1.2rem; color: #6b6b73; font-size: .82rem; }
+    .micro-status strong { color: #111113; }
+    .metric-card {
+        min-height: 118px;
+        padding: 1.1rem 1.15rem;
+        border: 1px solid rgba(17,17,19,.10);
+        border-radius: 20px;
+        background: rgba(255,255,255,.64);
+        box-shadow: 0 12px 35px rgba(17,17,19,.06);
+        backdrop-filter: blur(18px);
     }
-    .verdict-banner {
-        border-radius: 8px;
-        padding: 12px 16px;
-        margin-bottom: 12px;
-        font-size: 0.95rem;
-    }
-    .verdict-success { background-color: #dcfce7; border: 1px solid #16a34a; color: #14532d; }
-    .verdict-error   { background-color: #fee2e2; border: 1px solid #dc2626; color: #7f1d1d; }
-    .verdict-warning { background-color: #fef3c7; border: 1px solid #d97706; color: #78350f; }
+    .metric-top { display: flex; align-items: center; justify-content: space-between; gap: .5rem; color: #6b6b73; font-size: .72rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+    .metric-dot { width: 8px; height: 8px; border-radius: 50%; background: #111113; display: inline-block; }
+    .metric-dot.fail { background: #b5b5bd; box-shadow: 0 0 0 4px rgba(17,17,19,.08); }
+    .metric-value { margin: .3rem 0 .05rem; color: #111113; font-size: 2rem; font-weight: 800; letter-spacing: -.06em; }
+    .metric-sub { color: #87878e; font-size: .74rem; }
+    .verdict-banner { padding: 1.1rem 1.25rem; border: 1px solid #111113; border-radius: 18px; background: rgba(255,255,255,.74); box-shadow: 0 12px 30px rgba(17,17,19,.06); }
+    .verdict-banner.warning { border-color: #8b8b92; }
+    .verdict-banner.error { border-color: #111113; background: rgba(241,241,243,.88); }
+    .verdict-kicker { color: #74747c; font-size: .7rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+    .verdict-title { margin: .25rem 0 .35rem; color: #111113; font-size: 1.25rem; font-weight: 800; letter-spacing: -.04em; }
+    .verdict-copy { margin: 0; color: #6b6b73; font-size: .88rem; line-height: 1.45; }
+    .answer-card { padding: 1.25rem 1.4rem; border: 1px solid rgba(17,17,19,.10); border-radius: 22px; background: rgba(255,255,255,.74); box-shadow: 0 15px 40px rgba(17,17,19,.06); }
+    .answer-label { color: #74747c; font-size: .72rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+    .answer-text { margin-top: .7rem; color: #202024; font-size: 1.08rem; line-height: 1.7; }
+    .chunk-box { border-radius: 14px; padding: 12px 14px; margin-bottom: 9px; font-size: .86rem; line-height: 1.5; background: rgba(255,255,255,.76); border: 1px solid rgba(17,17,19,.10); color: #25252a; }
+    .chunk-green { border-left: 4px solid #111113; }
+    .chunk-red { border-left: 4px solid #a4a4ab; background: rgba(238,238,241,.78); }
+    .claim-green { background: #f0f0f2; color: #111113; padding: 3px 7px; border-radius: 6px; border-bottom: 2px solid #111113; }
+    .claim-red { background: #dedee2; color: #111113; padding: 3px 7px; border-radius: 6px; border-bottom: 2px solid #77777f; font-weight: 700; }
+    .claim-neutral { background: #f5f5f7; color: #55555d; padding: 3px 7px; border-radius: 6px; border-bottom: 2px solid #aaaab1; }
+    .section-label { margin: 1.5rem 0 .6rem; color: #74747c; font-size: .72rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+    .sidebar-brand { margin-bottom: 1.3rem; color: #111113; font-size: 1.15rem; font-weight: 800; letter-spacing: -.04em; }
+    .sidebar-note { margin: .2rem 0 1.2rem; color: #7a7a82; font-size: .78rem; line-height: 1.45; }
+    .stButton > button { border: 1px solid #111113; border-radius: 14px; background: #111113; color: white; font-weight: 700; min-height: 2.6rem; box-shadow: 0 8px 18px rgba(17,17,19,.16); }
+    .stButton > button:hover { border-color: #333338; background: #333338; color: white; }
+    .stTextInput input, .stTextArea textarea, .stSelectbox [data-baseweb="select"] > div { border-radius: 14px; border-color: rgba(17,17,19,.15); background: rgba(255,255,255,.74); }
+    .stExpander { border-color: rgba(17,17,19,.10) !important; border-radius: 16px !important; background: rgba(255,255,255,.34); }
     </style>
     """,
     unsafe_allow_html=True,
@@ -124,21 +146,21 @@ DEFAULT_DOCS = [
 
 def render_scorecard(title: str, score: float | None, subtitle: str, threshold: float = 0.65):
     if score is None:
-        css = "scorecard-gray"
         val_str = "N/A"
         status_str = "No Ground Truth"
+        dot_class = "fail"
     else:
         is_good = score >= threshold
-        css = "scorecard-green" if is_good else "scorecard-red"
         val_str = f"{score:.0%}"
-        status_str = "PASS (Accurate)" if is_good else "FAIL (Below Threshold)"
+        status_str = "On target" if is_good else "Below target"
+        dot_class = "" if is_good else "fail"
 
     st.markdown(
         f"""
-        <div class="scorecard {css}">
-            <div class="scorecard-title">{title}</div>
-            <div class="scorecard-value">{val_str}</div>
-            <div class="scorecard-sub">{status_str} · {subtitle}</div>
+        <div class="metric-card">
+            <div class="metric-top"><span>{title}</span><span class="metric-dot {dot_class}"></span></div>
+            <div class="metric-value">{val_str}</div>
+            <div class="metric-sub">{status_str} · {subtitle}</div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -173,21 +195,18 @@ if "pipeline" not in st.session_state:
 
 # ─── SIDEBAR: Configuration, Document Upload & Fault Injection ───
 with st.sidebar:
-    st.header("⚙️ Pipeline Controls")
+    st.markdown('<div class="sidebar-brand">Campus RAG Lab</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="sidebar-note">A simple way to show whether a wrong answer came from search or generation.</div>',
+        unsafe_allow_html=True,
+    )
     uploaded_files = st.file_uploader(
-        "Upload Documents (.pdf, .txt, .md)",
+        "Add documents",
         type=["pdf", "txt", "md"],
         accept_multiple_files=True,
     )
-    col_c1, col_c2, col_c3 = st.columns(3)
-    chunk_size = col_c1.slider("Chunk Words", 30, 300, 65, step=5)
-    top_k = col_c2.slider("Retriever Top-K", 1, 6, 2)
-    overlap_max = max(0, min(100, int(chunk_size) - 1))
-    chunk_overlap = col_c3.slider(
-        "Chunk Overlap", 0, overlap_max, min(12, overlap_max), step=1
-    )
 
-    if st.button("📥 Index Documents & Generate Tests", use_container_width=True):
+    if st.button("Index documents", use_container_width=True):
         docs_to_use = parse_uploaded_files(uploaded_files) if uploaded_files else DEFAULT_DOCS
         pipe = DecoupledRAGPipeline(
             chunk_size=int(chunk_size), chunk_overlap=int(chunk_overlap)
@@ -197,56 +216,70 @@ with st.sidebar:
         st.session_state.synthetic_tests = SyntheticTestsetGenerator.generate_testset(
             pipe.chunks, num_questions=5
         )
-        st.success(f"Indexed {len(pipe.chunks)} chunks & generated {len(st.session_state.synthetic_tests)} test cases.")
+        st.success(f"Ready · {len(pipe.chunks)} chunks")
 
-    st.divider()
-    st.subheader("🧪 Component Fault Simulation")
-    st.caption("Isolate Retriever vs. Generator failures to see the diagnostic engine in action:")
+    st.markdown('<div class="section-label">Demo mode</div>', unsafe_allow_html=True)
     scenario = st.radio(
-        "Execution Scenario",
+        "Choose one scenario",
         options=[
-            "✅ Normal End-to-End (Healthy)",
-            "🔴 Retriever Failure (Wrong Chunks)",
-            "🔴 Generator Hallucination (Unfaithful)",
-            "🟠 Generator Omission (Missed Facts)",
-            "🔴 Compound Failure (Both Fail)",
+            "Normal · healthy",
+            "Retriever · wrong chunks",
+            "Generator · hallucination",
+            "Generator · omission",
+            "Compound · both fail",
         ],
         index=0,
     )
 
-    st.divider()
-    openai_api_key = st.text_input(
-        "OpenAI API Key (Optional)",
-        type="password",
-        help="Leave blank to use the built-in Local Semantic/Lexical Judge & Generator.",
-    )
-    pass_threshold = st.slider("Pass Threshold", 0.40, 0.90, 0.65, 0.05)
-    st.caption(
-        "Local mode uses BM25 + TF-IDF + regex numeric checks. Add a key to use the optional LLM judge."
-    )
+    with st.expander("Advanced settings"):
+        col_c1, col_c2 = st.columns(2)
+        chunk_size = col_c1.slider("Chunk size", 30, 300, 65, step=5)
+        top_k = col_c2.slider("Top-K", 1, 6, 2)
+        overlap_max = max(0, min(100, int(chunk_size) - 1))
+        chunk_overlap = st.slider(
+            "Chunk overlap", 0, overlap_max, min(12, overlap_max), step=1
+        )
+        pass_threshold = st.slider("Pass threshold", 0.40, 0.90, 0.65, 0.05)
+        openai_api_key = st.text_input(
+            "LLM judge key (optional)",
+            type="password",
+            help="Leave blank for the local zero-key evaluator.",
+        )
+        st.caption("Local mode: BM25 + TF-IDF + numeric consistency checks.")
 
 # Map scenario selection to fault flags
-sim_bad_ret = scenario in ("🔴 Retriever Failure (Wrong Chunks)", "🔴 Compound Failure (Both Fail)")
-if scenario in ("🔴 Generator Hallucination (Unfaithful)", "🔴 Compound Failure (Both Fail)"):
+sim_bad_ret = scenario in ("Retriever · wrong chunks", "Compound · both fail")
+if scenario in ("Generator · hallucination", "Compound · both fail"):
     sim_gen_mode = "hallucinate"
-elif scenario == "🟠 Generator Omission (Missed Facts)":
+elif scenario == "Generator · omission":
     sim_gen_mode = "omit"
 else:
     sim_gen_mode = "normal"
 
 # ─── MAIN SINGLE-SCREEN DASHBOARD ───
-st.title("🔬 RAG Evaluation Pipeline — Retriever & Generator Tested Apart")
+st.markdown(
+    f"""
+    <div class="hero">
+        <div class="eyebrow">RAG / ROOT-CAUSE / LIVE DEMO</div>
+        <div class="hero-title">Can we trust<br/>this answer?</div>
+        <p class="hero-copy">One clean view separates a search problem from a generation problem.</p>
+        <div class="micro-status"><strong>Ask</strong> → read the four scores → open evidence only when needed.</div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 
 # Top Query Selector Bar (Synthetic Test Questions or Custom Query)
 test_options = ["[Custom Query]"] + [
     f"{tc.id} ({tc.question_type}): {tc.question}" for tc in st.session_state.synthetic_tests
 ]
-col_q1, col_q2 = st.columns([3, 2])
-with col_q1:
+with st.container(border=True):
+    st.markdown('<div class="section-label">1 · Ask a question</div>', unsafe_allow_html=True)
     selected_option = st.selectbox(
-        "Select Auto-Generated Synthetic Test Question (Deliverable 2) or Enter Custom Query:",
+        "Question library",
         options=test_options,
         index=1 if len(test_options) > 1 else 0,
+        label_visibility="collapsed",
     )
 
 if selected_option == "[Custom Query]":
@@ -258,13 +291,13 @@ else:
     default_q = chosen_tc.question
     default_gt = chosen_tc.ground_truth
 
-with col_q1:
-    query_input = st.text_input("Query", value=default_q)
-with col_q2:
+query_input = st.text_input("Your question", value=default_q)
+with st.expander("Edit reference answer (optional)"):
     gt_input = st.text_area(
-        "Ground Truth Reference (Optional — enables Context Recall & Answer Accuracy)",
+        "Reference answer",
         value=default_gt,
-        height=92,
+        height=78,
+        help="Used to measure context recall and answer accuracy.",
     )
 
 # Run Pipeline & Evaluate
@@ -288,100 +321,93 @@ eval_result: EvaluationResult = evaluator.evaluate(
     openai_api_key=openai_api_key or None,
 )
 
-# ─── ROW 1: COLOUR-CODED SCORECARDS (Deliverable 1 & 4) ───
+# ─── FAST READ: four scores + one verdict ───
+st.markdown('<div class="section-label">2 · Read the result</div>', unsafe_allow_html=True)
 sc1, sc2, sc3, sc4 = st.columns(4)
 with sc1:
-    render_scorecard("1. Context Relevance", eval_result.context_relevance, "Retriever (Query ↔ Chunks)", pass_threshold)
+    render_scorecard("Relevance", eval_result.context_relevance, "search", pass_threshold)
 with sc2:
-    render_scorecard("2. Context Recall", eval_result.context_recall, "Retriever (GT ↔ Chunks)", pass_threshold)
+    render_scorecard("Recall", eval_result.context_recall, "search", pass_threshold)
 with sc3:
-    render_scorecard("3. Faithfulness", eval_result.faithfulness, "Generator (Answer ↔ Chunks)", pass_threshold)
+    render_scorecard("Faithfulness", eval_result.faithfulness, "answer", pass_threshold)
 with sc4:
-    render_scorecard("4. Answer Accuracy", eval_result.answer_accuracy, "End-to-End (Answer ↔ GT)", pass_threshold)
+    render_scorecard("Accuracy", eval_result.answer_accuracy, "answer", pass_threshold)
 
-# ─── ROW 2: AUTOMATED ROOT-CAUSE BANNER (Deliverable 3) ───
 rc = eval_result.root_cause
-banner_class = f"verdict-{rc.severity}"
 st.markdown(
     f"""
-    <div class="verdict-banner {banner_class}">
-        <strong>🧭 Root-Cause Diagnosis: [{rc.verdict_code}] {rc.verdict_label}</strong>
-        &nbsp;|&nbsp; <strong>Blamed Stage:</strong> <code>{rc.failed_component}</code><br/>
-        {rc.summary}
+    <div class="verdict-banner {html.escape(rc.severity)}">
+        <div class="verdict-kicker">Root cause · {html.escape(rc.failed_component)}</div>
+        <div class="verdict-title">{html.escape(rc.verdict_code)} — {html.escape(rc.verdict_label)}</div>
+        <p class="verdict-copy">{html.escape(rc.summary)}</p>
     </div>
     """,
     unsafe_allow_html=True,
 )
 
-# ─── ROW 3: SIDE-BY-SIDE INSPECTOR (Retrieved Context vs Generated Answer + Diagnostics) ───
-left_col, right_col = st.columns([1, 1], gap="large")
-
-with left_col:
-    st.subheader("📑 Stage 1: Retrieved Chunks (Retriever Output)")
-    st.caption("Green = Relevant to query / contains ground truth · Red = Irrelevant chunk fetched")
-    for ce in eval_result.chunk_evaluations:
-        css_box = "chunk-green" if ce.is_relevant else "chunk-red"
-        badge = "🟢 RELEVANT" if ce.is_relevant else "🔴 IRRELEVANT"
-        gt_badge = " · 🎯 Contains Ground Truth" if ce.contains_ground_truth else ""
-        st.markdown(
-            f"""
-            <div class="chunk-box {css_box}">
-                <strong>[{html.escape(ce.chunk_id)}]</strong> ({badge} · Score: <code>{ce.relevance_score:.2f}</code>{gt_badge})<br/>
-                {html.escape(ce.text)}
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-with right_col:
-    st.subheader("🤖 Stage 2: Generated Answer & Claim Verification")
-    st.caption("Inline highlights: Green = Verified in Retrieved Context · Red = Hallucinated Claim")
-
-    # Render inline color-coded answer
-    highlighted_spans = []
-    for cv in eval_result.claim_verifications:
-        if cv.status == "SUPPORTED":
-            span_cls = "claim-green"
-            tag = f"✓ [{cv.supporting_chunk_id}]"
-        elif cv.status == "HALLUCINATED":
-            span_cls = "claim-red"
-            tag = "✗ HALLUCINATED"
-        else:
-            span_cls = "claim-neutral"
-            tag = "⚠ ABSTAINED"
-        highlighted_spans.append(
-            f'<span class="{span_cls}">{html.escape(cv.claim)} <strong>({html.escape(tag)})</strong></span>'
-        )
-
-    st.markdown(
-        "<div style='line-height: 1.9; font-size: 0.97rem; margin-bottom: 12px;'>"
-        + " ".join(highlighted_spans)
-        + "</div>",
-        unsafe_allow_html=True,
+highlighted_spans = []
+for cv in eval_result.claim_verifications:
+    if cv.status == "SUPPORTED":
+        span_cls = "claim-green"
+        tag = f"✓ {cv.supporting_chunk_id or 'context'}"
+    elif cv.status == "HALLUCINATED":
+        span_cls = "claim-red"
+        tag = "✗ unsupported"
+    else:
+        span_cls = "claim-neutral"
+        tag = "⚠ abstained"
+    highlighted_spans.append(
+        f'<span class="{span_cls}">{html.escape(cv.claim)} <strong>({html.escape(tag)})</strong></span>'
     )
 
-    if eval_result.missing_ground_truth_facts:
-        st.markdown(
-            "<div class='chunk-box chunk-red'><strong>🔴 Missing Information (Present in Ground Truth but Omitted in Answer):</strong><br/>"
-            + "<br/>".join(
-                f"• {html.escape(m)}" for m in eval_result.missing_ground_truth_facts
+st.markdown(
+    '<div class="answer-card">'
+    '<div class="answer-label">3 · Final answer</div>'
+    '<div class="answer-text">'
+    + (" ".join(highlighted_spans) or html.escape(generated_answer))
+    + "</div></div>",
+    unsafe_allow_html=True,
+)
+
+with st.expander("See evidence · retrieved context and claim audit"):
+    left_col, right_col = st.columns([1, 1], gap="large")
+    with left_col:
+        st.markdown("**Retrieved context**")
+        st.caption("The chunks the answer was allowed to use.")
+        for ce in eval_result.chunk_evaluations:
+            css_box = "chunk-green" if ce.is_relevant else "chunk-red"
+            badge = "RELEVANT" if ce.is_relevant else "IRRELEVANT"
+            gt_badge = " · ground truth" if ce.contains_ground_truth else ""
+            st.markdown(
+                f"""
+                <div class="chunk-box {css_box}">
+                    <strong>{html.escape(ce.chunk_id)}</strong> · {badge} · {ce.relevance_score:.2f}{gt_badge}<br/>
+                    {html.escape(ce.text)}
+                </div>
+                """,
+                unsafe_allow_html=True,
             )
-            + "</div>",
-            unsafe_allow_html=True,
-        )
-
-    with st.expander("🛠️ Automated Root-Cause Remediation Plan & Claim Breakdown", expanded=True):
-        st.markdown("**Prescribed Engineering Fixes:**")
-        for step in rc.remediation_steps:
-            st.markdown(f"- {step}")
-        st.markdown("**Sentence-Level Grounding Audit:**")
+    with right_col:
+        st.markdown("**Claim audit**")
         for cv in eval_result.claim_verifications:
-            icon = "🟢" if cv.status == "SUPPORTED" else ("🔴" if cv.status == "HALLUCINATED" else "🟡")
-            st.markdown(f"- {icon} **{cv.status}**: _{cv.claim}_ — {cv.reason}")
+            icon = "✓" if cv.status == "SUPPORTED" else ("✗" if cv.status == "HALLUCINATED" else "⚠")
+            st.markdown(
+                f"{icon} **{cv.status.title()}** — {html.escape(cv.claim)}  \n"
+                f"<small>{html.escape(cv.reason)}</small>",
+                unsafe_allow_html=True,
+            )
+        if eval_result.missing_ground_truth_facts:
+            st.markdown("**Missing facts**")
+            for missing in eval_result.missing_ground_truth_facts:
+                st.markdown(f"- {html.escape(missing)}")
+        st.markdown("**Recommended next step**")
+        for step in rc.remediation_steps:
+            st.markdown(f"- {html.escape(step)}")
 
-# ─── ROW 4: BATCH SYNTHETIC TESTSET RUNNER (Deliverable 2) ───
-with st.expander("📊 View All Synthetic Test Questions & Run Full Batch Evaluation"):
-    if st.button("▶️ Run Full Batch Evaluation Across All Synthetic Questions"):
+# ─── OPTIONAL DEEP DIVE: BATCH SYNTHETIC TESTSET RUNNER ───
+with st.expander("Run batch audit · optional"):
+    st.caption("Evaluate every generated question with the same scenario.")
+    if st.button("Run batch audit"):
         rows = []
         for tc in st.session_state.synthetic_tests:
             r_chunks = pipeline.retrieve(tc.question, top_k=int(top_k), simulate_bad_retrieval=sim_bad_ret)
