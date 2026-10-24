@@ -1,3 +1,4 @@
+import html
 import io
 import pandas as pd
 import streamlit as st
@@ -141,11 +142,15 @@ def render_scorecard(title: str, score: float | None, subtitle: str, threshold: 
 def parse_uploaded_files(uploaded_files) -> list[dict]:
     docs = []
     for f in uploaded_files:
-        if f.name.lower().endswith(".pdf"):
-            reader = PdfReader(io.BytesIO(f.read()))
-            text = "\n".join(page.extract_text() or "" for page in reader.pages)
-        else:
-            text = f.read().decode("utf-8", errors="ignore")
+        try:
+            if f.name.lower().endswith(".pdf"):
+                reader = PdfReader(io.BytesIO(f.read()))
+                text = "\n".join(page.extract_text() or "" for page in reader.pages)
+            else:
+                text = f.read().decode("utf-8", errors="ignore")
+        except Exception as exc:
+            st.warning(f"Could not read {f.name}: {exc}")
+            continue
         if text.strip():
             docs.append({"name": f.name, "content": text})
     return docs
@@ -169,8 +174,8 @@ with st.sidebar:
         accept_multiple_files=True,
     )
     col_c1, col_c2 = st.columns(2)
-    chunk_size = col_c1.number_input("Chunk Words", 30, 300, 65, step=10)
-    top_k = col_c2.number_input("Retriever Top-K", 1, 6, 2)
+    chunk_size = col_c1.slider("Chunk Words", 30, 300, 65, step=5)
+    top_k = col_c2.slider("Retriever Top-K", 1, 6, 2)
 
     if st.button("📥 Index Documents & Generate Tests", use_container_width=True):
         docs_to_use = parse_uploaded_files(uploaded_files) if uploaded_files else DEFAULT_DOCS
@@ -204,6 +209,9 @@ with st.sidebar:
         help="Leave blank to use the built-in Local Semantic/Lexical Judge & Generator.",
     )
     pass_threshold = st.slider("Pass Threshold", 0.40, 0.90, 0.65, 0.05)
+    st.caption(
+        "Local mode uses BM25 + TF-IDF + regex numeric checks. Add a key to use the optional LLM judge."
+    )
 
 # Map scenario selection to fault flags
 sim_bad_ret = scenario in ("🔴 Retriever Failure (Wrong Chunks)", "🔴 Compound Failure (Both Fail)")
@@ -306,8 +314,8 @@ with left_col:
         st.markdown(
             f"""
             <div class="chunk-box {css_box}">
-                <strong>[{ce.chunk_id}]</strong> ({badge} · Score: <code>{ce.relevance_score:.2f}</code>{gt_badge})<br/>
-                {ce.text}
+                <strong>[{html.escape(ce.chunk_id)}]</strong> ({badge} · Score: <code>{ce.relevance_score:.2f}</code>{gt_badge})<br/>
+                {html.escape(ce.text)}
             </div>
             """,
             unsafe_allow_html=True,
@@ -329,7 +337,9 @@ with right_col:
         else:
             span_cls = "claim-neutral"
             tag = "⚠ ABSTAINED"
-        highlighted_spans.append(f'<span class="{span_cls}">{cv.claim} <strong>({tag})</strong></span>')
+        highlighted_spans.append(
+            f'<span class="{span_cls}">{html.escape(cv.claim)} <strong>({html.escape(tag)})</strong></span>'
+        )
 
     st.markdown(
         "<div style='line-height: 1.9; font-size: 0.97rem; margin-bottom: 12px;'>"
@@ -341,7 +351,9 @@ with right_col:
     if eval_result.missing_ground_truth_facts:
         st.markdown(
             "<div class='chunk-box chunk-red'><strong>🔴 Missing Information (Present in Ground Truth but Omitted in Answer):</strong><br/>"
-            + "<br/>".join(f"• {m}" for m in eval_result.missing_ground_truth_facts)
+            + "<br/>".join(
+                f"• {html.escape(m)}" for m in eval_result.missing_ground_truth_facts
+            )
             + "</div>",
             unsafe_allow_html=True,
         )
