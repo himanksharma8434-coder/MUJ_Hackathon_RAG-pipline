@@ -100,7 +100,6 @@ class SyntheticTestsetGenerator:
         # preserving upload/chunk order for a predictable first demo question.
         for chunk in chunks:
             chunk_candidates = [item for item in candidates if item[0] == chunk]
-            chunk_candidates.sort(key=lambda item: item[2], reverse=True)
             for candidate in chunk_candidates:
                 _, sentence, _ = candidate
                 key = re.sub(r"\W+", " ", sentence.lower()).strip()
