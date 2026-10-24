@@ -1,0 +1,9 @@
+Data Retention and Privacy Policy
+
+Customer audit logs must be retained for 365 days and protected with encryption at rest and in transit.
+
+Deletion requests must be acknowledged within 24 hours and completed within 30 days unless a legal hold applies.
+
+Production data exports require written approval from the Data Protection Officer and must use an approved encrypted transfer channel.
+
+Backups containing personal data must be tested for restoration at least once every 90 days.
