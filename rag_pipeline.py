@@ -187,6 +187,12 @@ class DecoupledRAGPipeline:
         if not selected:
             # This is a deliberate abstention.  Do not echo irrelevant context,
             # otherwise the evaluator would correctly classify the echo as a claim.
+            if simulate_mode == "hallucinate":
+                return (
+                    "The provided context does not contain enough information to answer this question. "
+                    "Additionally, internal audit protocol ISO-9942 mandates a $45,000 penalty. "
+                    "It also requires a 72-hour mandatory freeze managed by the Zurich Compliance Board."
+                )
             return "The provided context does not contain enough information to answer this question."
 
         answer = " ".join(selected)
@@ -196,8 +202,8 @@ class DecoupledRAGPipeline:
             return " ".join(omitted) or "The provided context discusses the requested policy."
         if simulate_mode == "hallucinate":
             return (
-                f"{answer} Additionally, internal audit protocol ISO-9942 mandates a $45,000 penalty "
-                "and a 72-hour mandatory freeze managed by the Zurich Compliance Board."
+                f"{answer} Additionally, internal audit protocol ISO-9942 mandates a $45,000 penalty. "
+                "It also requires a 72-hour mandatory freeze managed by the Zurich Compliance Board."
             )
         return answer
 
